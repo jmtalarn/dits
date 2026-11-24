@@ -11,6 +11,6 @@ body {
   overflow: hidden;
   background-color: #000000;
   color: #ffffff;
-  overscroll-behavior-y: none; /* Evita rebots no desitjats al mòbil */
+  overscroll-behavior-y: none;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }

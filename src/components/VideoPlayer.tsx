@@ -2,16 +2,23 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
+import { Maximize2 } from 'lucide-react';
 import styles from './PostSlide.module.css';
 
 interface VideoPlayerProps {
   playlist: string;
   poster?: string;
+  onFullscreen?: () => void;
 }
 
-export default function VideoPlayer({ playlist, poster }: VideoPlayerProps) {
+export default function VideoPlayer({
+  playlist,
+  poster,
+  onFullscreen,
+}: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isMuted, setIsMuted] = useState(true);
+  const pointerStartX = useRef(0);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -24,37 +31,33 @@ export default function VideoPlayer({ playlist, poster }: VideoPlayerProps) {
       hls.loadSource(playlist);
       hls.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Suport natiu a Safari / iOS
       video.src = playlist;
     }
 
-    // Reproducció automàtica només quan el vídeo és visible a la pantalla
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            video.play().catch(() => {
-              // El navegador pot bloquejar autoplay si no està mutat
-            });
+            video.play().catch(() => {});
           } else {
             video.pause();
           }
         });
       },
-      { threshold: 0.6 } // S'activa quan es veu almenys el 60% del vídeo
+      { threshold: 0.6 }
     );
 
     observer.observe(video);
 
     return () => {
       observer.disconnect();
-      if (hls) {
-        hls.destroy();
-      }
+      if (hls) hls.destroy();
     };
   }, [playlist]);
 
-  const toggleMute = () => {
+  const handleVideoClick = (e: React.MouseEvent) => {
+    // Prevent toggling mute if the user was dragging horizontally
+    if (Math.abs(e.clientX - pointerStartX.current) > 8) return;
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
@@ -62,7 +65,11 @@ export default function VideoPlayer({ playlist, poster }: VideoPlayerProps) {
   };
 
   return (
-    <div className={styles.mediaWrapper} onClick={toggleMute}>
+    <div
+      className={styles.mediaWrapper}
+      onPointerDown={(e) => (pointerStartX.current = e.clientX)}
+      onClick={handleVideoClick}
+    >
       <video
         ref={videoRef}
         poster={poster}
@@ -71,9 +78,24 @@ export default function VideoPlayer({ playlist, poster }: VideoPlayerProps) {
         playsInline
         className={styles.videoElement}
       />
+
       <span className={styles.muteBadge}>
-        {isMuted ? '🔇 Toca per activar so' : '🔊 So activat'}
+        {isMuted ? '🔇 Tap for sound' : '🔊 Sound on'}
       </span>
+
+      {onFullscreen && (
+        <button
+          type="button"
+          aria-label="Fullscreen video"
+          className={styles.fullscreenVideoBtn}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevents toggling mute when opening fullscreen
+            onFullscreen();
+          }}
+        >
+          <Maximize2 size={16} />
+        </button>
+      )}
     </div>
   );
 }
