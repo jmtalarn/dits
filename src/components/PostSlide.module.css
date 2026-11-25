@@ -477,3 +477,11 @@
   background: rgba(255, 255, 255, 0.22);
   transform: scale(1.06);
 }
+
+.likedActive {
+  color: #f43f5e !important;
+}
+
+.repostedActive {
+  color: #10b981 !important;
+}

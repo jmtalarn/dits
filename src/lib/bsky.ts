@@ -4,13 +4,19 @@ import {
     AppBskyEmbedRecord,
     AppBskyEmbedRecordWithMedia,
     AppBskyFeedDefs,
+    Agent, AtpSessionData
 } from '@atproto/api';
 
 const BSKY_PUBLIC_API = 'https://public.api.bsky.app';
+const BSKY_PDS_HOST = 'https://bsky.social';
 const ENDPOINT_AUTHOR_FEED = '/xrpc/app.bsky.feed.getAuthorFeed';
 const ENDPOINT_POST_THREAD = '/xrpc/app.bsky.feed.getPostThread';
-
+const SESSION_STORAGE_KEY = 'dits_bsky_session';
+const DISCOVER_FEED_URI = 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot';
 const FEATURED_ACTORS = ['did:plc:z72i7hdynmk6r22z27h6tvur']; // bsky.app
+const ENDPOINT_CREATE_SESSION = '/xrpc/com.atproto.server.createSession';
+const ENDPOINT_TIMELINE = '/xrpc/app.bsky.feed.getTimeline';
+const ENDPOINT_GET_FEED = '/xrpc/app.bsky.feed.getFeed';
 
 export interface DitsQuoteData {
     uri: string;
@@ -56,6 +62,8 @@ export interface DitsPost {
     likeCount: number;
     replyCount: number;
     repostCount: number;
+    viewerLikeUri?: string;    // Present if logged-in user already liked this post
+    viewerRepostUri?: string;  // Present if logged-in user already reposted this post
     slides: DitsSlideItem[];
     quotePreview?: DitsQuoteData;
 }
@@ -215,6 +223,8 @@ export async function getVisualFeed(cursor?: string) {
                 likeCount: post.likeCount || 0,
                 replyCount: post.replyCount || 0,
                 repostCount: post.repostCount || 0,
+                viewerLikeUri: post.viewer?.like,
+                viewerRepostUri: post.viewer?.repost,
                 slides,
                 quotePreview,
             });
@@ -280,4 +290,278 @@ export async function getQuotedThreadSlides(
     }
 
     return threadSlides;
+}
+// Shared parser to turn raw Bluesky FeedViewPost items into DitsPost[]
+function parseFeedItems(feed: AppBskyFeedDefs.FeedViewPost[]): DitsPost[] {
+    const ditsPosts: DitsPost[] = [];
+
+    for (const item of feed) {
+        const post = item.post;
+        const record = post.record as { text?: string };
+        const embed = post.embed;
+        const postText = record.text || '';
+        const slides: DitsSlideItem[] = [];
+        let quotePreview: DitsQuoteData | undefined;
+
+        if (!embed && postText.trim().length > 0) {
+            slides.push({ type: 'text', text: postText });
+        } else if (AppBskyEmbedImages.isView(embed)) {
+            embed.images.forEach((img) => {
+                slides.push({ type: 'image', image: { fullsize: img.fullsize, alt: img.alt } });
+            });
+        } else if (AppBskyEmbedVideo.isView(embed)) {
+            slides.push({
+                type: 'video',
+                video: { playlist: embed.playlist, thumbnail: embed.thumbnail },
+            });
+        } else if (AppBskyEmbedRecord.isView(embed)) {
+            if (postText.trim().length > 0) slides.push({ type: 'text', text: postText });
+            const extracted = extractQuoteData(embed.record);
+            if (extracted) {
+                slides.push(extracted.slide);
+                quotePreview = extracted.preview;
+            }
+        } else if (AppBskyEmbedRecordWithMedia.isView(embed)) {
+            if (AppBskyEmbedImages.isView(embed.media)) {
+                embed.media.images.forEach((img) => {
+                    slides.push({ type: 'image', image: { fullsize: img.fullsize, alt: img.alt } });
+                });
+            } else if (AppBskyEmbedVideo.isView(embed.media)) {
+                slides.push({
+                    type: 'video',
+                    video: { playlist: embed.media.playlist, thumbnail: embed.media.thumbnail },
+                });
+            }
+            const extracted = extractQuoteData(embed.record.record);
+            if (extracted) {
+                slides.push(extracted.slide);
+                quotePreview = extracted.preview;
+            }
+        }
+
+        if (slides.length > 0) {
+            ditsPosts.push({
+                uri: post.uri,
+                cid: post.cid,
+                author: {
+                    did: post.author.did,
+                    handle: post.author.handle,
+                    displayName: post.author.displayName,
+                    avatar: post.author.avatar,
+                },
+                text: postText,
+                indexedAt: post.indexedAt,
+                likeCount: post.likeCount || 0,
+                replyCount: post.replyCount || 0,
+                repostCount: post.repostCount || 0,
+                viewerLikeUri: post.viewer?.like,
+                viewerRepostUri: post.viewer?.repost,
+                slides,
+                quotePreview,
+            });
+        }
+    }
+
+    return ditsPosts;
+}
+
+// Log in using Handle + App Password (https://bsky.app)
+export async function loginWithAppPassword(identifier: string, password: string) {
+    const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.server.createSession`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            identifier: identifier.replace(/^@/, '').trim(),
+            password: password.trim(),
+        }),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Invalid handle or App Password');
+    }
+
+    const session: AtpSessionData = await res.json();
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    return session;
+}
+
+export function getSavedSession(): AtpSessionData | null {
+    if (typeof window === 'undefined') return null;
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as AtpSessionData) : null;
+}
+
+export function logoutSession() {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
+// Fetch Authenticated Timeline ("Following") or Discover Feed
+export async function getAuthenticatedFeed(
+    session: AtpSessionData,
+    tab: 'following' | 'discover',
+    cursor?: string
+) {
+    const endpoint = tab === 'following' ? ENDPOINT_TIMELINE : ENDPOINT_GET_FEED;
+    const url = new URL(endpoint, BSKY_PDS_HOST);
+    url.searchParams.set('limit', '30');
+    if (tab === 'discover') {
+        url.searchParams.set('feed', DISCOVER_FEED_URI);
+    }
+    if (cursor) {
+        url.searchParams.set('cursor', cursor);
+    }
+
+    const res = await fetch(url.toString(), {
+        headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${session.accessJwt}`,
+        },
+    });
+
+    if (!res.ok) {
+        throw new Error(`Session expired or feed error (${res.status})`);
+    }
+
+    const data = (await res.json()) as {
+        feed: AppBskyFeedDefs.FeedViewPost[];
+        cursor?: string;
+    };
+
+    return {
+        posts: parseFeedItems(data.feed),
+        cursor: data.cursor,
+    };
+}
+
+export interface DitsComment {
+    uri: string;
+    cid: string;
+    authorName: string;
+    authorHandle: string;
+    authorAvatar?: string;
+    text: string;
+    indexedAt: string;
+    likeCount: number;
+}
+
+// Fetch replies (comments) for a specific post
+export async function getPostComments(postUri: string): Promise<DitsComment[]> {
+    const url = new URL('/xrpc/app.bsky.feed.getPostThread', BSKY_PUBLIC_API);
+    url.searchParams.set('uri', postUri);
+    url.searchParams.set('depth', '2');
+    url.searchParams.set('parentHeight', '0');
+
+    const res = await fetch(url.toString(), {
+        headers: { Accept: 'application/json' },
+    });
+
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    const replies = data.thread?.replies || [];
+    const comments: DitsComment[] = [];
+
+    for (const item of replies) {
+        const p = item.post;
+        if (!p) continue;
+        const record = p.record as { text?: string };
+
+        comments.push({
+            uri: p.uri,
+            cid: p.cid,
+            authorName: p.author.displayName || p.author.handle,
+            authorHandle: p.author.handle,
+            authorAvatar: p.author.avatar,
+            text: record.text || '',
+            indexedAt: p.indexedAt,
+            likeCount: p.likeCount || 0,
+        });
+    }
+
+    return comments;
+}
+
+// Publish a new reply (comment) using the logged-in session
+export async function postComment(
+    session: AtpSessionData,
+    rootPost: { uri: string; cid: string },
+    text: string
+) {
+    const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.accessJwt}`,
+        },
+        body: JSON.stringify({
+            repo: session.did,
+            collection: 'app.bsky.feed.post',
+            record: {
+                $type: 'app.bsky.feed.post',
+                text: text.trim(),
+                createdAt: new Date().toISOString(),
+                reply: {
+                    root: { uri: rootPost.uri, cid: rootPost.cid },
+                    parent: { uri: rootPost.uri, cid: rootPost.cid },
+                },
+            },
+        }),
+    });
+
+    if (!res.ok) {
+        throw new Error('Failed to post comment');
+    }
+
+    return res.json();
+}
+
+// Create or delete a Like / Repost record on Bluesky
+export async function toggleReaction(
+  session: AtpSessionData,
+  collection: 'app.bsky.feed.like' | 'app.bsky.feed.repost',
+  subject: { uri: string; cid: string },
+  existingRecordUri?: string
+): Promise<string | undefined> {
+  // If already liked/reposted, delete the existing record using its rkey (last segment of URI)
+  if (existingRecordUri) {
+    const rkey = existingRecordUri.split('/').pop();
+    const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.deleteRecord`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.accessJwt}`,
+      },
+      body: JSON.stringify({
+        repo: session.did,
+        collection,
+        rkey,
+      }),
+    });
+
+    if (!res.ok) throw new Error('Failed to remove reaction');
+    return undefined;
+  }
+
+  // Otherwise, create a new like or repost record
+  const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.accessJwt}`,
+    },
+    body: JSON.stringify({
+      repo: session.did,
+      collection,
+      record: {
+        $type: collection,
+        subject: { uri: subject.uri, cid: subject.cid },
+        createdAt: new Date().toISOString(),
+      },
+    }),
+  });
+
+  if (!res.ok) throw new Error('Failed to add reaction');
+  const data = (await res.json()) as { uri: string };
+  return data.uri;
 }
