@@ -165,6 +165,15 @@
   background: #18181b;
   position: relative;
   overflow: hidden;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: opacity 0.15s ease;
+}
+
+.gridCell:hover {
+  opacity: 0.85;
 }
 
 .gridImg {
@@ -199,4 +208,68 @@
   -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Full-screen Vertical Feed Overlay when tapping a grid post */
+.authorFeedOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background-color: #000000;
+  display: flex;
+  flex-direction: column;
+}
+
+.authorFeedHeader {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 460px;
+  padding: 0 18px;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.authorFeedPill {
+  pointer-events: auto;
+  background: rgba(17, 17, 19, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: 99px;
+  backdrop-filter: blur(16px);
+}
+
+.authorFeedBackBtn {
+  pointer-events: auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(28, 28, 30, 0.85);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+}
+
+.authorFeedScroll {
+  height: 100dvh;
+  width: 100vw;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+
+.authorFeedScroll::-webkit-scrollbar {
+  display: none;
 }

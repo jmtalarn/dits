@@ -1,10 +1,13 @@
 import {
-    AppBskyEmbedImages,
-    AppBskyEmbedVideo,
-    AppBskyEmbedRecord,
-    AppBskyEmbedRecordWithMedia,
-    AppBskyFeedDefs,
-    Agent, AtpSessionData
+  Agent,
+  AtpSessionData,
+  RichText,
+  AppBskyRichtextFacet,
+  AppBskyEmbedImages,
+  AppBskyEmbedVideo,
+  AppBskyEmbedRecord,
+  AppBskyEmbedRecordWithMedia,
+  AppBskyFeedDefs,
 } from '@atproto/api';
 
 const BSKY_PUBLIC_API = 'https://public.api.bsky.app';
@@ -17,6 +20,8 @@ const FEATURED_ACTORS = ['did:plc:z72i7hdynmk6r22z27h6tvur']; // bsky.app
 const ENDPOINT_CREATE_SESSION = '/xrpc/com.atproto.server.createSession';
 const ENDPOINT_TIMELINE = '/xrpc/app.bsky.feed.getTimeline';
 const ENDPOINT_GET_FEED = '/xrpc/app.bsky.feed.getFeed';
+const ENDPOINT_SEARCH_POSTS = '/xrpc/app.bsky.feed.searchPosts';
+
 
 export interface DitsQuoteData {
     uri: string;
@@ -25,12 +30,14 @@ export interface DitsQuoteData {
     authorHandle: string;
     authorAvatar?: string;
     text: string;
+    facets?: AppBskyRichtextFacet.Main[];
     image?: string;
 }
 
 export interface DitsSlideItem {
     type: 'text' | 'image' | 'video' | 'quote';
     text?: string;
+    facets?: AppBskyRichtextFacet.Main[];
     image?: {
         fullsize: string;
         alt: string;
@@ -44,6 +51,7 @@ export interface DitsSlideItem {
         authorHandle: string;
         authorAvatar?: string;
         text: string;
+        facets?: AppBskyRichtextFacet.Main[]; // <-- Add this line
         image?: string;
     };
 }
@@ -58,6 +66,7 @@ export interface DitsPost {
         avatar?: string;
     };
     text: string;
+    facets?: AppBskyRichtextFacet.Main[];
     indexedAt: string;
     likeCount: number;
     replyCount: number;
@@ -75,8 +84,9 @@ function extractQuoteData(recordView: unknown): {
 } | null {
     if (!AppBskyEmbedRecord.isViewRecord(recordView)) return null;
 
-    const view = recordView as AppBskyEmbedRecord.ViewRecord;
-    const value = view.value as { text?: string };
+const view = recordView as AppBskyEmbedRecord.ViewRecord;
+  const value = view.value as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
+
     let quoteImage: string | undefined;
 
     const firstEmbed = view.embeds?.at(0);
@@ -88,6 +98,7 @@ function extractQuoteData(recordView: unknown): {
     const authorHandle = view.author.handle;
     const authorAvatar = view.author.avatar;
     const text = value.text || '';
+    const facets = value.facets; 
 
     return {
         slide: {
@@ -97,6 +108,7 @@ function extractQuoteData(recordView: unknown): {
                 authorHandle,
                 authorAvatar,
                 text,
+                facets,
                 image: quoteImage,
             },
         },
@@ -107,6 +119,7 @@ function extractQuoteData(recordView: unknown): {
             authorHandle,
             authorAvatar,
             text,
+            facets,
             image: quoteImage,
         },
     };
@@ -294,20 +307,22 @@ export async function getQuotedThreadSlides(
 // Shared parser to turn raw Bluesky FeedViewPost items into DitsPost[]
 function parseFeedItems(feed: AppBskyFeedDefs.FeedViewPost[]): DitsPost[] {
     const ditsPosts: DitsPost[] = [];
-  const seenUris = new Set<string>();
+    const seenUris = new Set<string>();
 
     for (const item of feed) {
         const post = item.post;
         if (seenUris.has(post.uri)) continue;
         seenUris.add(post.uri);
-        const record = post.record as { text?: string };
+        const record = post.record as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
         const embed = post.embed;
         const postText = record.text || '';
+        const postFacets = record.facets;
+
         const slides: DitsSlideItem[] = [];
         let quotePreview: DitsQuoteData | undefined;
 
         if (!embed && postText.trim().length > 0) {
-            slides.push({ type: 'text', text: postText });
+            slides.push({ type: 'text', text: postText, facets: postFacets });
         } else if (AppBskyEmbedImages.isView(embed)) {
             embed.images.forEach((img) => {
                 slides.push({ type: 'image', image: { fullsize: img.fullsize, alt: img.alt } });
@@ -353,6 +368,8 @@ function parseFeedItems(feed: AppBskyFeedDefs.FeedViewPost[]): DitsPost[] {
                     avatar: post.author.avatar,
                 },
                 text: postText,
+                      facets: postFacets,
+
                 indexedAt: post.indexedAt,
                 likeCount: post.likeCount || 0,
                 replyCount: post.replyCount || 0,
@@ -444,6 +461,7 @@ export interface DitsComment {
     authorHandle: string;
     authorAvatar?: string;
     text: string;
+    facets?: AppBskyRichtextFacet.Main[];
     indexedAt: string;
     likeCount: number;
 }
@@ -468,7 +486,7 @@ export async function getPostComments(postUri: string): Promise<DitsComment[]> {
     for (const item of replies) {
         const p = item.post;
         if (!p) continue;
-        const record = p.record as { text?: string };
+        const record = p.record as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
 
         comments.push({
             uri: p.uri,
@@ -478,6 +496,7 @@ export async function getPostComments(postUri: string): Promise<DitsComment[]> {
             authorAvatar: p.author.avatar,
             text: record.text || '',
             indexedAt: p.indexedAt,
+            facets: record.facets,
             likeCount: p.likeCount || 0,
         });
     }
@@ -486,37 +505,46 @@ export async function getPostComments(postUri: string): Promise<DitsComment[]> {
 }
 
 // Publish a new reply (comment) using the logged-in session
+// Publish a new reply (comment) with auto-detected links, mentions, and hashtags
 export async function postComment(
-    session: AtpSessionData,
-    rootPost: { uri: string; cid: string },
-    text: string
+  session: AtpSessionData,
+  rootPost: { uri: string; cid: string },
+  text: string
 ) {
-    const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.accessJwt}`,
+  const rt = new RichText({ text: text.trim() });
+  await rt.detectFacets(new Agent(BSKY_PUBLIC_API));
+
+  const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.accessJwt}`,
+    },
+    body: JSON.stringify({
+      repo: session.did,
+      collection: 'app.bsky.feed.post',
+      record: {
+        $type: 'app.bsky.feed.post',
+        text: rt.text,
+        facets: rt.facets,
+        createdAt: new Date().toISOString(),
+        reply: {
+          root: { uri: rootPost.uri, cid: rootPost.cid },
+          parent: { uri: rootPost.uri, cid: rootPost.cid },
         },
-        body: JSON.stringify({
-            repo: session.did,
-            collection: 'app.bsky.feed.post',
-            record: {
-                $type: 'app.bsky.feed.post',
-                text: text.trim(),
-                createdAt: new Date().toISOString(),
-                reply: {
-                    root: { uri: rootPost.uri, cid: rootPost.cid },
-                    parent: { uri: rootPost.uri, cid: rootPost.cid },
-                },
-            },
-        }),
-    });
+      },
+    }),
+  });
 
-    if (!res.ok) {
-        throw new Error('Failed to post comment');
-    }
+  if (!res.ok) {
+    throw new Error('Failed to post comment');
+  }
 
-    return res.json();
+  const created = await res.json();
+  return {
+    ...created,
+    facets: rt.facets, // Returned so optimistic UI in CommentsDrawer renders clickable links immediately
+  };
 }
 
 // Create or delete a Like / Repost record on Bluesky
@@ -604,9 +632,13 @@ export async function createDitsPost(
   }
 
   // 2. Build the AT Protocol post record
+  const rt = new RichText({ text: text.trim() });
+  await rt.detectFacets(new Agent(BSKY_PUBLIC_API));
+
   const record: Record<string, unknown> = {
     $type: 'app.bsky.feed.post',
-    text: text.trim(),
+    text: rt.text,
+    facets: rt.facets,
     createdAt: new Date().toISOString(),
   };
 
@@ -762,4 +794,42 @@ export async function toggleFollowActor(
   if (!res.ok) throw new Error('Failed to follow');
   const data = (await res.json()) as { uri: string };
   return data.uri;
+}
+
+// Fetch posts matching a specific #hashtag (sorted by top or latest)
+export async function getHashtagFeed(
+  tag: string,
+  session?: AtpSessionData | null,
+  cursor?: string
+) {
+  const host = session ? BSKY_PDS_HOST : BSKY_PUBLIC_API;
+  const url = new URL(ENDPOINT_SEARCH_POSTS, host);
+  url.searchParams.set('q', `#${tag.replace(/^#/, '')}`);
+  url.searchParams.set('tag', tag.replace(/^#/, ''));
+  url.searchParams.set('sort', 'top');
+  url.searchParams.set('limit', '25');
+  if (cursor) {
+    url.searchParams.set('cursor', cursor);
+  }
+
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (session) {
+    headers.Authorization = `Bearer ${session.accessJwt}`;
+  }
+
+  const res = await fetch(url.toString(), { headers });
+  if (!res.ok) throw new Error('Could not load hashtag feed');
+
+  const data = (await res.json()) as {
+    posts: AppBskyFeedDefs.PostView[];
+    cursor?: string;
+  };
+
+  // Wrap PostView items into FeedViewPost shape so parseFeedItems handles all media/quotes/facets
+  const wrappedFeed = (data.posts || []).map((post) => ({ post }));
+
+  return {
+    posts: parseFeedItems(wrappedFeed),
+    cursor: data.cursor,
+  };
 }

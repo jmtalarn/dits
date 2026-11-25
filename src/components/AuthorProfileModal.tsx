@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { X, Play } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { X, Play, ArrowLeft } from 'lucide-react';
 import {
   getActorProfile,
   toggleFollowActor,
@@ -9,11 +9,12 @@ import {
   DitsProfile,
   DitsPost,
 } from '@/lib/bsky';
+import PostSlide from './PostSlide';
 import { DitsMiniSpinner } from './DitsLoader';
 import styles from './AuthorProfileModal.module.css';
 
 interface AuthorProfileModalProps {
-  actor: string; // handle or DID
+  actor: string;
   onClose: () => void;
 }
 
@@ -23,7 +24,9 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
   const [loading, setLoading] = useState(true);
   const [followUri, setFollowUri] = useState<string | undefined>(undefined);
   const [followersCount, setFollowersCount] = useState(0);
+  const [selectedPostIndex, setSelectedPostIndex] = useState<number | null>(null);
 
+  const feedScrollRef = useRef<HTMLDivElement | null>(null);
   const session = getSavedSession();
 
   useEffect(() => {
@@ -36,6 +39,17 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
       })
       .finally(() => setLoading(false));
   }, [actor]);
+
+  // Jump straight to the tapped post once the full-screen feed opens
+  useEffect(() => {
+    if (selectedPostIndex !== null && feedScrollRef.current) {
+      const slideHeight = feedScrollRef.current.clientHeight;
+      feedScrollRef.current.scrollTo({
+        top: selectedPostIndex * slideHeight,
+        behavior: 'instant' as ScrollBehavior,
+      });
+    }
+  }, [selectedPostIndex]);
 
   const handleToggleFollow = async () => {
     if (!session || !profile) return alert('Sign in to follow creators');
@@ -73,12 +87,10 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
           </div>
         ) : (
           <div className={styles.scrollBody}>
-            {/* Banner */}
             <div className={styles.banner}>
               {profile.banner && <img src={profile.banner} alt="" className={styles.bannerImg} />}
             </div>
 
-            {/* Avatar + Follow Action */}
             <div className={styles.profileHeader}>
               {profile.avatar && (
                 <img src={profile.avatar} alt={profile.handle} className={styles.avatar} />
@@ -95,7 +107,6 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
               )}
             </div>
 
-            {/* Name, Handle & Bio */}
             <div className={styles.bioSection}>
               <h2 className={styles.displayName}>{profile.displayName || profile.handle}</h2>
               <span className={styles.handle}>@{profile.handle}</span>
@@ -114,12 +125,17 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
               </div>
             </div>
 
-            {/* 3-Column Visual Post Grid */}
+            {/* Tappable 3-Column Visual Grid */}
             <div className={styles.grid}>
-              {posts.map((p) => {
+              {posts.map((p, idx) => {
                 const firstSlide = p.slides.at(0);
                 return (
-                  <div key={p.uri} className={styles.gridCell}>
+                  <button
+                    key={p.uri}
+                    type="button"
+                    onClick={() => setSelectedPostIndex(idx)}
+                    className={styles.gridCell}
+                  >
                     {firstSlide?.type === 'image' && firstSlide.image && (
                       <img src={firstSlide.image.fullsize} alt="" className={styles.gridImg} />
                     )}
@@ -138,13 +154,44 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
                         <p>{p.text}</p>
                       </div>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
           </div>
         )}
       </div>
+
+      {/* Full-Screen Creator Feed starting at the tapped post */}
+      {selectedPostIndex !== null && profile && (
+        <div className={styles.authorFeedOverlay} onClick={(e) => e.stopPropagation()}>
+          <header className={styles.authorFeedHeader}>
+            <button
+              type="button"
+              onClick={() => setSelectedPostIndex(null)}
+              className={styles.authorFeedBackBtn}
+              aria-label="Back to profile"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <span className={styles.authorFeedPill}>@{profile.handle}</span>
+            <button
+              type="button"
+              onClick={onClose}
+              className={styles.authorFeedBackBtn}
+              aria-label="Close profile"
+            >
+              <X size={18} />
+            </button>
+          </header>
+
+          <div ref={feedScrollRef} className={styles.authorFeedScroll}>
+            {posts.map((post) => (
+              <PostSlide key={post.uri} post={post} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
