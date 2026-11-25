@@ -1,205 +1,252 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { Plus, User, LogOut } from 'lucide-react';
 import { AtpSessionData } from '@atproto/api';
 import {
-    getVisualFeed,
-    getAuthenticatedFeed,
-    getSavedSession,
-    logoutSession,
-    DitsPost,
+  getVisualFeed,
+  getAuthenticatedFeed,
+  getSavedSession,
+  logoutSession,
+  getMyAvatar,
+  DitsPost,
 } from '@/lib/bsky';
 import PostSlide from './PostSlide';
 import LoginModal from './LoginModal';
-import styles from './FeedContainer.module.css';
-import { DitsFullLoader, DitsMiniSpinner } from './DitsLoader';
-import { Plus } from 'lucide-react';
 import ComposerModal from './ComposerModal';
+import AuthorProfileModal from './AuthorProfileModal';
+import { DitsFullLoader, DitsMiniSpinner } from './DitsLoader';
+import styles from './FeedContainer.module.css';
 
 export default function ClientFeed() {
-    const [session, setSession] = useState<AtpSessionData | null>(null);
-    const [activeTab, setActiveTab] = useState<'following' | 'discover'>('following');
-    const [showLogin, setShowLogin] = useState(false);
-    const [showComposer, setShowComposer] = useState(false);
+  const [session, setSession] = useState<AtpSessionData | null>(null);
+  const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState<'following' | 'discover'>('following');
 
-    const [posts, setPosts] = useState<DitsPost[]>([]);
-    const [cursor, setCursor] = useState<string | undefined>(undefined);
-    const [loading, setLoading] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showMyProfile, setShowMyProfile] = useState(false);
 
-    const feedRef = useRef<HTMLElement | null>(null);
+  const [posts, setPosts] = useState<DitsPost[]>([]);
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    // Restore saved session on mount
-    useEffect(() => {
-        const saved = getSavedSession();
-        if (saved) setSession(saved);
-    }, []);
+  const feedRef = useRef<HTMLElement | null>(null);
 
-    // Initial load whenever session or active tab changes
-    useEffect(() => {
-        async function loadInitial() {
-            setLoading(true);
-            setError(null);
-            setCursor(undefined);
+  // Restore saved session & fetch user avatar
+  useEffect(() => {
+    const saved = getSavedSession();
+    if (saved) {
+      setSession(saved);
+      getMyAvatar(saved).then(setMyAvatar);
+    }
+  }, []);
 
-            try {
-                const data = session
-                    ? await getAuthenticatedFeed(session, activeTab)
-                    : await getVisualFeed();
+  // Load feed whenever session or active tab changes
+  useEffect(() => {
+    async function loadInitial() {
+      setLoading(true);
+      setError(null);
+      setCursor(undefined);
 
-                setPosts(data.posts);
-                setCursor(data.cursor);
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'Error loading feed');
-            } finally {
-                setLoading(false);
-            }
-        }
-        loadInitial();
-    }, [session, activeTab]);
+      try {
+        const data = session
+          ? await getAuthenticatedFeed(session, activeTab)
+          : await getVisualFeed();
 
-    // Fetch next page using the saved Bluesky cursor
-    const loadMore = useCallback(async () => {
-        if (loadingMore || !cursor) return;
-        setLoadingMore(true);
+        setPosts(data.posts);
+        setCursor(data.cursor);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error loading feed');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadInitial();
+  }, [session, activeTab]);
 
-        try {
-            const data = session
-                ? await getAuthenticatedFeed(session, activeTab, cursor)
-                : await getVisualFeed(cursor);
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !cursor) return;
+    setLoadingMore(true);
 
-            setPosts((prev) => {
-                const existingUris = new Set(prev.map((p) => p.uri));
-                const uniqueNewPosts = data.posts.filter((p) => !existingUris.has(p.uri));
-                return [...prev, ...uniqueNewPosts];
-            });
-            setCursor(data.cursor);
-        } catch {
-            // Silently ignore background pagination errors so user can retry by scrolling
-        } finally {
-            setLoadingMore(false);
-        }
-    }, [loadingMore, cursor, session, activeTab]);
+    try {
+      const data = session
+        ? await getAuthenticatedFeed(session, activeTab, cursor)
+        : await getVisualFeed(cursor);
 
-    // Trigger loadMore when user is within 2 slides of the bottom
-    const handleFeedScroll = () => {
-        const el = feedRef.current;
-        if (!el || loadingMore || !cursor) return;
+      setPosts((prev) => {
+        const existingUris = new Set(prev.map((p) => p.uri));
+        const uniqueNewPosts = data.posts.filter((p) => !existingUris.has(p.uri));
+        return [...prev, ...uniqueNewPosts];
+      });
+      setCursor(data.cursor);
+    } catch {
+      // Ignore background pagination errors
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, cursor, session, activeTab]);
 
-        const remainingScroll = el.scrollHeight - el.scrollTop - el.clientHeight;
-        if (remainingScroll < el.clientHeight * 2) {
-            loadMore();
-        }
-    };
+  const handleFeedScroll = () => {
+    const el = feedRef.current;
+    if (!el || loadingMore || !cursor) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < el.clientHeight * 2) {
+      loadMore();
+    }
+  };
 
-    const handleLogout = () => {
-        logoutSession();
-        setSession(null);
-    };
+  const handleLogout = () => {
+    logoutSession();
+    setSession(null);
+    setMyAvatar(undefined);
+    setShowMenu(false);
+  };
 
-    return (
-        <>
-            {/* Top Floating Bar: Feed Tabs + Login/Logout */}
-            {/* Top Floating Bar: Feed Tabs + Compose (+) + Login/Logout */}
-            <header className={styles.topBar}>
-                {session ? (
-                    <div className={styles.navGroup}>
-                        <div className={styles.tabs}>
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('following')}
-                                className={`${styles.tabBtn} ${activeTab === 'following' ? styles.tabBtnActive : ''}`}
-                            >
-                                Following
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('discover')}
-                                className={`${styles.tabBtn} ${activeTab === 'discover' ? styles.tabBtnActive : ''}`}
-                            >
-                                Discover
-                            </button>
-                        </div>
+  return (
+    <>
+      {/* Redesigned 3-Slot Top Navigation Bar */}
+      <header className={styles.topBar}>
+        {/* Left Slot: Profile Avatar Menu (or Brand Mark when logged out) */}
+        {session ? (
+          <div className={styles.profileMenuWrapper}>
+            <button
+              type="button"
+              onClick={() => setShowMenu((prev) => !prev)}
+              className={styles.avatarBtn}
+              aria-label="Account menu"
+            >
+              {myAvatar ? (
+                <img src={myAvatar} alt={session.handle} className={styles.navAvatarImg} />
+              ) : (
+                <User size={18} />
+              )}
+            </button>
 
-                        <button
-                            type="button"
-                            onClick={() => setShowComposer(true)}
-                            aria-label="New post"
-                            className={styles.composeBtn}
-                        >
-                            <Plus size={18} strokeWidth={2.5} />
-                        </button>
-                    </div>
-                ) : (
-                    <div className={styles.tabs}>
-                        <span className={styles.tabBtnActive}>Dits · Explore</span>
-                    </div>
-                )}
-
-                {session ? (
-                    <button type="button" onClick={handleLogout} className={styles.authBtn}>
-                        @{session.handle.split('.').at(0)} · Exit
-                    </button>
-                ) : (
-                    <button type="button" onClick={() => setShowLogin(true)} className={styles.authBtn}>
-                        Sign in
-                    </button>
-                )}
-            </header>
-
-
-            {loading ? (
-                <DitsFullLoader />
-            ) : error ? (
-                <div className={styles.feedWrapper} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                    <p>{error}</p>
-                </div>
-            ) : (
-                <main
-                    ref={feedRef}
-                    onScroll={handleFeedScroll}
-                    className={styles.feedWrapper}
+            {showMenu && (
+              <div className={styles.dropdownMenu}>
+                <div className={styles.dropdownHeader}>@{session.handle}</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMenu(false);
+                    setShowMyProfile(true);
+                  }}
+                  className={styles.dropdownItem}
                 >
-                    {posts.map((post) => (
-                        <PostSlide key={post.uri} post={post} />
-                    ))}
+                  <User size={15} />
+                  <span>My Profile</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className={styles.dropdownItemDanger}
+                >
+                  <LogOut size={15} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <span className={styles.brandPill}>dits</span>
+        )}
 
-                    {loadingMore && (
-                        <div
-                            style={{
-                                height: '90px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                        >
-                            <DitsMiniSpinner />
-                        </div>
-                    )}
-                </main>
-            )}
+        {/* Center Slot: Segmented Feed Switcher */}
+        {session ? (
+          <div className={styles.tabs}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('following')}
+              className={`${styles.tabBtn} ${activeTab === 'following' ? styles.tabBtnActive : ''}`}
+            >
+              Following
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('discover')}
+              className={`${styles.tabBtn} ${activeTab === 'discover' ? styles.tabBtnActive : ''}`}
+            >
+              Discover
+            </button>
+          </div>
+        ) : (
+          <span className={styles.brandPill}>Explore</span>
+        )}
 
-            {showLogin && (
-                <LoginModal
-                    onSuccess={(newSession) => {
-                        setSession(newSession);
-                        setShowLogin(false);
-                    }}
-                    onClose={() => setShowLogin(false)}
-                />
-            )}
-            {session && showComposer && (
-                <ComposerModal
-                    session={session}
-                    onPostCreated={(newPost) => {
-                        setPosts((prev) => [newPost, ...prev]);
-                        setShowComposer(false);
-                        feedRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    onClose={() => setShowComposer(false)}
-                />
-            )}
-        </>
-    );
+        {/* Right Slot: + Compose Button (or Sign In) */}
+        {session ? (
+          <button
+            type="button"
+            onClick={() => setShowComposer(true)}
+            aria-label="New post"
+            className={styles.composeBtn}
+          >
+            <Plus size={20} strokeWidth={2.5} />
+          </button>
+        ) : (
+          <button type="button" onClick={() => setShowLogin(true)} className={styles.authBtn}>
+            Sign in
+          </button>
+        )}
+      </header>
+
+      {loading ? (
+        <DitsFullLoader />
+      ) : error ? (
+        <div className={styles.centeredState}>
+          <p>{error}</p>
+        </div>
+      ) : (
+        <main
+          ref={feedRef}
+          onScroll={handleFeedScroll}
+          onClick={() => showMenu && setShowMenu(false)}
+          className={styles.feedWrapper}
+        >
+          {posts.map((post) => (
+            <PostSlide key={post.uri} post={post} />
+          ))}
+
+          {loadingMore && (
+            <div className={styles.loadMoreRow}>
+              <DitsMiniSpinner />
+            </div>
+          )}
+        </main>
+      )}
+
+      {showLogin && (
+        <LoginModal
+          onSuccess={(newSession) => {
+            setSession(newSession);
+            getMyAvatar(newSession).then(setMyAvatar);
+            setShowLogin(false);
+          }}
+          onClose={() => setShowLogin(false)}
+        />
+      )}
+
+      {session && showComposer && (
+        <ComposerModal
+          session={session}
+          onPostCreated={(newPost) => {
+            setPosts((prev) => [newPost, ...prev]);
+            setShowComposer(false);
+            feedRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onClose={() => setShowComposer(false)}
+        />
+      )}
+
+      {session && showMyProfile && (
+        <AuthorProfileModal
+          actor={session.did}
+          onClose={() => setShowMyProfile(false)}
+        />
+      )}
+    </>
+  );
 }

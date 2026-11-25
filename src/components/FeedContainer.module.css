@@ -11,55 +11,169 @@
   display: none;
 }
 
-/* Top Floating Feed Bar */
+/* Top Floating Navigation Bar */
 .topBar {
   position: fixed;
-  top: 22px;
+  top: 16px;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
   max-width: 460px;
-  padding: 0 18px;
-  z-index: 40;
+  padding: 0 16px;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: space-between;
   pointer-events: none;
 }
 
-.navGroup {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* Left Profile Avatar Button & Popover Menu */
+.profileMenuWrapper {
+  position: relative;
   pointer-events: auto;
 }
 
-.tabs {
+.avatarBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  background: rgba(24, 24, 27, 0.82);
+  color: #f4f4f5;
+  padding: 0;
+  overflow: hidden;
   display: flex;
-  gap: 14px;
-  pointer-events: auto;
-  background: rgba(17, 17, 19, 0.72);
-  padding: 6px 14px;
-  border-radius: 99px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
   backdrop-filter: blur(16px);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.avatarBtn:hover {
+  transform: scale(1.05);
+  border-color: #38bdf8;
+}
+
+.navAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 44px;
+  left: 0;
+  min-width: 175px;
+  background: rgba(24, 24, 27, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+  animation: popIn 0.14s ease-out;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.dropdownHeader {
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #71717a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdownItem,
+.dropdownItemDanger {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.dropdownItem {
+  color: #f4f4f5;
+}
+
+.dropdownItem:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dropdownItemDanger {
+  color: #f87171;
+}
+
+.dropdownItemDanger:hover {
+  background: rgba(248, 113, 113, 0.12);
+}
+
+/* Center Segmented Glass Pill */
+.tabs {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  background: rgba(24, 24, 27, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px;
+  border-radius: 99px;
+  backdrop-filter: blur(18px);
 }
 
 .tabBtn {
   background: none;
   border: none;
-  color: #71717a;
-  font-size: 13.5px;
-  font-weight: 700;
+  color: #a1a1aa;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 99px;
   cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .tabBtnActive {
   color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
 }
 
+.brandPill {
+  pointer-events: auto;
+  background: rgba(24, 24, 27, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 7px 16px;
+  border-radius: 99px;
+  backdrop-filter: blur(18px);
+}
+
+/* Right Action Button (+ Compose or Sign In) */
 .composeBtn {
-  width: 32px;
-  height: 32px;
+  pointer-events: auto;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: none;
   background: #38bdf8;
@@ -68,6 +182,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);
   transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
@@ -78,15 +193,14 @@
 
 .authBtn {
   pointer-events: auto;
-  background: rgba(56, 189, 248, 0.18);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  color: #7dd3fc;
-  font-size: 12px;
+  background: #38bdf8;
+  border: none;
+  color: #09090b;
+  font-size: 13px;
   font-weight: 700;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: 99px;
   cursor: pointer;
-  backdrop-filter: blur(16px);
 }
 
 .centeredState {

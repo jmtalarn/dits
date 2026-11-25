@@ -15,9 +15,9 @@
 /* Top Stories Progress Bars */
 .progressBars {
   position: absolute;
-  top: 12px;
-  left: 16px;
-  right: 16px;
+  top: 58px;
+  left: 28px;
+  right: 28px;
   display: flex;
   gap: 5px;
   z-index: 30;
@@ -57,13 +57,16 @@
   -webkit-backdrop-filter: blur(16px);
 }
 
+/* Position swipe pills neatly inside the top corners of the card */
 .swipeHint {
-  right: 16px;
+  right: 26px;
+  top: 76px;
   color: #38bdf8;
 }
 
 .swipeBackHint {
-  left: 16px;
+  left: 26px;
+  top: 76px;
 }
 
 .muteBadge {
@@ -88,7 +91,7 @@
   display: none;
 }
 
-/* Slide Container */
+/* Give the top nav bar clean breathing room above the card */
 .carouselItem {
   flex: 0 0 100%;
   width: 100%;
@@ -97,7 +100,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 58px 16px 96px 16px;
+  padding: 66px 16px 96px 16px;
 }
 
 /* Unified Card Surface */

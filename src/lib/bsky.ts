@@ -833,3 +833,18 @@ export async function getHashtagFeed(
     cursor: data.cursor,
   };
 }
+export async function getMyAvatar(session: AtpSessionData): Promise<string | undefined> {
+  const url = new URL('/xrpc/app.bsky.actor.getProfile', BSKY_PDS_HOST);
+  url.searchParams.set('actor', session.did);
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${session.accessJwt}`,
+    },
+  });
+
+  if (!res.ok) return undefined;
+  const data = await res.json();
+  return data.avatar;
+}
