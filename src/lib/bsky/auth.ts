@@ -1,6 +1,6 @@
 import { AtpSessionData } from '@atproto/api';
 
-export const BSKY_PUBLIC_API = 'https://bsky.app';
+export const BSKY_PUBLIC_API = 'https://public.api.bsky.app';
 export const BSKY_PDS_HOST = 'https://bsky.social';
 const SESSION_STORAGE_KEY = 'dits_bsky_session';
 const BSKY_MOD_LABELER = 'did:plc:ar7c4by46qjdydhdevvrndac;redact';

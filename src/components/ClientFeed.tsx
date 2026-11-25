@@ -23,6 +23,16 @@ import FeedPickerModal from './FeedPickerModal';
 
 import ContentFilterModal from './ContentFilterModal';
 
+const FEED_CACHE_KEY = 'dits_feed_cache_v1';
+
+interface CachedFeedState {
+    tab: 'following' | 'custom';
+    feedUri: string;
+    posts: DitsPost[];
+    cursor?: string;
+    scrollTop: number;
+}
+
 export default function ClientFeed() {
     const [session, setSession] = useState<AtpSessionData | null>(null);
     const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);
@@ -57,6 +67,34 @@ export default function ClientFeed() {
     // Load feed whenever session or active tab changes
     useEffect(() => {
         async function loadInitial() {
+            // Check if we have a cached feed for this exact tab & feedUri
+            const rawCache = sessionStorage.getItem(FEED_CACHE_KEY);
+            if (rawCache) {
+                try {
+                    const cached = JSON.parse(rawCache) as CachedFeedState;
+                    if (
+                        cached.tab === activeTab &&
+                        cached.feedUri === selectedFeed.uri &&
+                        cached.posts.length > 0
+                    ) {
+                        setPosts(cached.posts);
+                        setCursor(cached.cursor);
+                        setLoading(false);
+
+                        // Restore exact vertical scroll position after DOM paints
+                        requestAnimationFrame(() => {
+                            if (feedRef.current) {
+                                feedRef.current.scrollTop = cached.scrollTop;
+                            }
+                        });
+                        return;
+                    }
+                } catch {
+                    // Ignore malformed cache and fetch fresh
+                }
+            }
+
+            // Otherwise fetch fresh posts from Bluesky
             setLoading(true);
             setError(null);
             setCursor(undefined);
@@ -66,15 +104,16 @@ export default function ClientFeed() {
                     ? await getAuthenticatedFeed(session, activeTab, selectedFeed.uri)
                     : await getVisualFeed();
 
-
                 setPosts(data.posts);
                 setCursor(data.cursor);
+                saveFeedCache(data.posts, data.cursor, 0)
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Error loading feed');
             } finally {
                 setLoading(false);
             }
         }
+
         loadInitial();
     }, [session, activeTab, selectedFeed.uri, filterVersion]);
 
@@ -100,12 +139,34 @@ export default function ClientFeed() {
             setLoadingMore(false);
         }
     }, [loadingMore, cursor, session, activeTab, selectedFeed.uri]);
-
+   
+    const saveFeedCache = useCallback(
+        (currentPosts: DitsPost[], currentCursor?: string, currentScroll = 0) => {
+            const payload: CachedFeedState = {
+                tab: activeTab,
+                feedUri: selectedFeed.uri,
+                posts: currentPosts.slice(0, 60),
+                cursor: currentCursor,
+                scrollTop: currentScroll,
+            };
+            sessionStorage.setItem(FEED_CACHE_KEY, JSON.stringify(payload));
+        },
+        [activeTab, selectedFeed.uri]
+    );
+   
+    // Trigger loadMore AND save your current scroll position
     const handleFeedScroll = () => {
         const el = feedRef.current;
-        if (!el || loadingMore || !cursor) return;
+        if (!el) return;
+
+        // 1. Save current position to sessionStorage
+        saveFeedCache(posts, cursor, el.scrollTop);
+
+        // 2. Load next page if within 2 slides of the bottom
+        if (!loadingMore && cursor) {
         if (el.scrollHeight - el.scrollTop - el.clientHeight < el.clientHeight * 2) {
             loadMore();
+        }
         }
     };
 
