@@ -658,3 +658,108 @@ export async function createDitsPost(
     slides,
   };
 }
+
+export interface DitsProfile {
+  did: string;
+  handle: string;
+  displayName?: string;
+  avatar?: string;
+  banner?: string;
+  description?: string;
+  followersCount: number;
+  followsCount: number;
+  postsCount: number;
+  viewerFollowUri?: string;
+}
+
+export async function getActorProfile(
+  actor: string,
+  session?: AtpSessionData | null
+): Promise<{ profile: DitsProfile; posts: DitsPost[] }> {
+  const host = session ? BSKY_PDS_HOST : BSKY_PUBLIC_API;
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (session) {
+    headers.Authorization = `Bearer ${session.accessJwt}`;
+  }
+
+  // 1. Fetch profile metadata
+  const profileUrl = new URL('/xrpc/app.bsky.actor.getProfile', host);
+  profileUrl.searchParams.set('actor', actor);
+
+  // 2. Fetch author's posts
+  const feedUrl = new URL(ENDPOINT_AUTHOR_FEED, host);
+  feedUrl.searchParams.set('actor', actor);
+  feedUrl.searchParams.set('filter', 'posts_no_replies');
+  feedUrl.searchParams.set('limit', '30');
+
+  const [profileRes, feedRes] = await Promise.all([
+    fetch(profileUrl.toString(), { headers }),
+    fetch(feedUrl.toString(), { headers }),
+  ]);
+
+  if (!profileRes.ok) throw new Error('Could not load profile');
+
+  const p = await profileRes.json();
+  const feedData = feedRes.ok ? await feedRes.json() : { feed: [] };
+
+  return {
+    profile: {
+      did: p.did,
+      handle: p.handle,
+      displayName: p.displayName,
+      avatar: p.avatar,
+      banner: p.banner,
+      description: p.description,
+      followersCount: p.followersCount || 0,
+      followsCount: p.followsCount || 0,
+      postsCount: p.postsCount || 0,
+      viewerFollowUri: p.viewer?.following,
+    },
+    posts: parseFeedItems(feedData.feed || []),
+  };
+}
+
+export async function toggleFollowActor(
+  session: AtpSessionData,
+  targetDid: string,
+  existingFollowUri?: string
+): Promise<string | undefined> {
+  if (existingFollowUri) {
+    const rkey = existingFollowUri.split('/').pop();
+    const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.deleteRecord`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.accessJwt}`,
+      },
+      body: JSON.stringify({
+        repo: session.did,
+        collection: 'app.bsky.graph.follow',
+        rkey,
+      }),
+    });
+    if (!res.ok) throw new Error('Failed to unfollow');
+    return undefined;
+  }
+
+  const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.accessJwt}`,
+    },
+    body: JSON.stringify({
+      repo: session.did,
+      collection: 'app.bsky.graph.follow',
+      record: {
+        $type: 'app.bsky.graph.follow',
+        subject: targetDid,
+        createdAt: new Date().toISOString(),
+      },
+    }),
+  });
+
+  if (!res.ok) throw new Error('Failed to follow');
+  const data = (await res.json()) as { uri: string };
+  return data.uri;
+}

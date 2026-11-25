@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import CommentsDrawer from './CommentsDrawer';
 import styles from './PostSlide.module.css';
 import SlideCard from './SlideCard';
-
+import AuthorProfileModal from './AuthorProfileModal';
 
 export default function PostSlide({ post }: { post: DitsPost }) {
     const [slides, setSlides] = useState<DitsSlideItem[]>(post.slides);
@@ -18,6 +18,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
     const [likeCount, setLikeCount] = useState(post.likeCount);
     const [repostUri, setRepostUri] = useState<string | undefined>(post.viewerRepostUri);
     const [repostCount, setRepostCount] = useState(post.repostCount);
+    const [selectedActor, setSelectedActor] = useState<string | null>(null);
 
 
     const carouselRef = useRef<HTMLDivElement | null>(null);
@@ -171,7 +172,12 @@ export default function PostSlide({ post }: { post: DitsPost }) {
 
             {/* Big Bottom Footer: Author on Left, Actions on Right */}
             <div className={styles.bottomFooter}>
-                <div className={styles.authorRow}>
+                <button
+                    type="button"
+                    onClick={() => setSelectedActor(activeAuthor.handle)}
+                    className={styles.authorRow}
+                    style={{ background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0 }}
+                >
                     {activeAuthor.avatar && (
                         <img src={activeAuthor.avatar} alt={activeAuthor.handle} className={styles.avatarLarge} />
                     )}
@@ -179,7 +185,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                         <span className={styles.authorNameLarge}>{activeAuthor.name}</span>
                         <span className={styles.authorHandle}>@{activeAuthor.handle}</span>
                     </div>
-                </div>
+                </button>
 
                 <div className={styles.actionsRow}>
                     <button
@@ -219,6 +225,12 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                     postCid={post.cid}
                     onClose={() => setShowComments(false)}
                     onCommentAdded={() => setReplyCount((c) => c + 1)}
+                />
+            )}
+            {selectedActor && (
+                <AuthorProfileModal
+                    actor={selectedActor}
+                    onClose={() => setSelectedActor(null)}
                 />
             )}
         </article>
