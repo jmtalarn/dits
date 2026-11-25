@@ -8,6 +8,7 @@ import {
     AppBskyEmbedRecord,
     AppBskyEmbedRecordWithMedia,
     AppBskyFeedDefs,
+    AppBskyEmbedExternal
 } from '@atproto/api';
 
 const BSKY_PUBLIC_API = 'https://public.api.bsky.app';
@@ -15,9 +16,9 @@ const BSKY_PDS_HOST = 'https://bsky.social';
 const ENDPOINT_AUTHOR_FEED = '/xrpc/app.bsky.feed.getAuthorFeed';
 const ENDPOINT_POST_THREAD = '/xrpc/app.bsky.feed.getPostThread';
 const SESSION_STORAGE_KEY = 'dits_bsky_session';
-const DISCOVER_FEED_URI = 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot';
+// const DISCOVER_FEED_URI = 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot';
 const FEATURED_ACTORS = ['did:plc:z72i7hdynmk6r22z27h6tvur']; // bsky.app
-const ENDPOINT_CREATE_SESSION = '/xrpc/com.atproto.server.createSession';
+// const ENDPOINT_CREATE_SESSION = '/xrpc/com.atproto.server.createSession';
 const ENDPOINT_TIMELINE = '/xrpc/app.bsky.feed.getTimeline';
 const ENDPOINT_GET_FEED = '/xrpc/app.bsky.feed.getFeed';
 const ENDPOINT_SEARCH_POSTS = '/xrpc/app.bsky.feed.searchPosts';
@@ -36,9 +37,10 @@ export interface DitsQuoteData {
 }
 
 export interface DitsSlideItem {
-    type: 'text' | 'image' | 'video' | 'quote';
+    type: 'text' | 'image' | 'video' | 'quote' | 'gif';
     text?: string;
     facets?: AppBskyRichtextFacet.Main[];
+    gifUrl?: string; 
     image?: {
         fullsize: string;
         alt: string;
@@ -77,51 +79,89 @@ export interface DitsPost {
     slides: DitsSlideItem[];
     quotePreview?: DitsQuoteData;
 }
+function extractGifSlide(embed: unknown): DitsSlideItem | null {
+  if (!AppBskyEmbedExternal.isView(embed)) return null;
+
+  const view = embed as AppBskyEmbedExternal.View;
+  const rawUri = view.external.uri || '';
+  if (!rawUri) return null;
+
+  try {
+    const parsed = new URL(rawUri);
+    const pathname = parsed.pathname.toLowerCase();
+    const isTenorOrGiphy =
+      parsed.hostname.includes('tenor.com') || parsed.hostname.includes('giphy.com');
+    const isMediaFile =
+      pathname.endsWith('.mp4') || pathname.endsWith('.gif') || pathname.endsWith('.webm');
+
+    if (isTenorOrGiphy || isMediaFile) {
+      return {
+        type: 'gif',
+        gifUrl: rawUri,
+        image: view.external.thumb
+          ? { fullsize: view.external.thumb, alt: view.external.title || 'GIF' }
+          : undefined,
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+
 // 1. Extract the primary slides (text, images, or video) from a post
 function extractPrimarySlides(post: AppBskyFeedDefs.PostView): DitsSlideItem[] {
-    const record = post.record as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
-    const text = record.text || '';
-    const facets = record.facets;
-    const embed = post.embed;
+  const record = post.record as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
+  const text = record.text || '';
+  const facets = record.facets;
+  const embed = post.embed;
 
-    // Image gallery
-    if (AppBskyEmbedImages.isView(embed)) {
-        return embed.images.map((img) => ({
-            type: 'image',
-            image: { fullsize: img.fullsize, alt: img.alt },
-        }));
+  // 1. Image gallery
+  if (AppBskyEmbedImages.isView(embed)) {
+    return embed.images.map((img) => ({
+      type: 'image',
+      image: { fullsize: img.fullsize, alt: img.alt },
+    }));
+  }
+
+  // 2. Video
+  if (AppBskyEmbedVideo.isView(embed)) {
+    return [{
+      type: 'video',
+      video: { playlist: embed.playlist, thumbnail: embed.thumbnail },
+    }];
+  }
+
+  // 3. Standalone Tenor / Giphy GIF
+  const directGif = extractGifSlide(embed);
+  if (directGif) return [directGif];
+
+  // 4. Quote with media (Images, Video, or GIF)
+  if (AppBskyEmbedRecordWithMedia.isView(embed)) {
+    if (AppBskyEmbedImages.isView(embed.media)) {
+      return embed.media.images.map((img) => ({
+        type: 'image',
+        image: { fullsize: img.fullsize, alt: img.alt },
+      }));
     }
-
-    // Video
-    if (AppBskyEmbedVideo.isView(embed)) {
-        return [{
-            type: 'video',
-            video: { playlist: embed.playlist, thumbnail: embed.thumbnail },
-        }];
+    if (AppBskyEmbedVideo.isView(embed.media)) {
+      return [{
+        type: 'video',
+        video: { playlist: embed.media.playlist, thumbnail: embed.media.thumbnail },
+      }];
     }
+    const quotedGif = extractGifSlide(embed.media);
+    if (quotedGif) return [quotedGif];
+  }
 
-    // Quote with media
-    if (AppBskyEmbedRecordWithMedia.isView(embed)) {
-        if (AppBskyEmbedImages.isView(embed.media)) {
-            return embed.media.images.map((img) => ({
-                type: 'image',
-                image: { fullsize: img.fullsize, alt: img.alt },
-            }));
-        }
-        if (AppBskyEmbedVideo.isView(embed.media)) {
-            return [{
-                type: 'video',
-                video: { playlist: embed.media.playlist, thumbnail: embed.media.thumbnail },
-            }];
-        }
-    }
+  // 5. Text-only fallback
+  if (text.trim().length > 0) {
+    return [{ type: 'text', text, facets }];
+  }
 
-    // Fallback to text card (for text-only posts or pure quote posts)
-    if (text.trim().length > 0) {
-        return [{ type: 'text', text, facets }];
-    }
-
-    return [];
+  return [];
 }
 
 // 2. Build a context slide + teaser from either a Quoted Post OR a Reply Parent
@@ -355,44 +395,6 @@ export function getSavedSession(): AtpSessionData | null {
 
 export function logoutSession() {
     localStorage.removeItem(SESSION_STORAGE_KEY);
-}
-
-// Fetch Authenticated Timeline ("Following") or Discover Feed
-export async function getAuthenticatedFeed(
-    session: AtpSessionData,
-    tab: 'following' | 'discover',
-    cursor?: string
-) {
-    const endpoint = tab === 'following' ? ENDPOINT_TIMELINE : ENDPOINT_GET_FEED;
-    const url = new URL(endpoint, BSKY_PDS_HOST);
-    url.searchParams.set('limit', '30');
-    if (tab === 'discover') {
-        url.searchParams.set('feed', DISCOVER_FEED_URI);
-    }
-    if (cursor) {
-        url.searchParams.set('cursor', cursor);
-    }
-
-    const res = await fetch(url.toString(), {
-        headers: {
-            Accept: 'application/json',
-            Authorization: `Bearer ${session.accessJwt}`,
-        },
-    });
-
-    if (!res.ok) {
-        throw new Error(`Session expired or feed error (${res.status})`);
-    }
-
-    const data = (await res.json()) as {
-        feed: AppBskyFeedDefs.FeedViewPost[];
-        cursor?: string;
-    };
-
-    return {
-        posts: parseFeedItems(data.feed),
-        cursor: data.cursor,
-    };
 }
 
 export interface DitsComment {
@@ -788,4 +790,140 @@ export async function getMyAvatar(session: AtpSessionData): Promise<string | und
     if (!res.ok) return undefined;
     const data = await res.json();
     return data.avatar;
+}
+
+export interface DitsFeedGenerator {
+  uri: string;
+  displayName: string;
+  description?: string;
+  avatar?: string;
+  creatorHandle: string;
+}
+
+export const DEFAULT_DISCOVER_FEED: DitsFeedGenerator = {
+  uri: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot',
+  displayName: 'Discover',
+  creatorHandle: 'bsky.app',
+};
+
+// Fetch the logged-in user's saved/pinned feeds + popular Bluesky feeds
+export async function getAvailableFeeds(
+  session: AtpSessionData
+): Promise<{ saved: DitsFeedGenerator[]; popular: DitsFeedGenerator[] }> {
+  const headers = {
+    Accept: 'application/json',
+    Authorization: `Bearer ${session.accessJwt}`,
+  };
+
+  // 1. Get user preferences to extract saved feed URIs
+  const prefUrl = new URL('/xrpc/app.bsky.actor.getPreferences', BSKY_PDS_HOST);
+  const popUrl = new URL('/xrpc/app.bsky.unspecced.getPopularFeedGenerators', BSKY_PDS_HOST);
+  popUrl.searchParams.set('limit', '15');
+
+  const [prefRes, popRes] = await Promise.all([
+    fetch(prefUrl.toString(), { headers }),
+    fetch(popUrl.toString(), { headers }),
+  ]);
+
+  let savedUris: string[] = [];
+  if (prefRes.ok) {
+    const prefData = await prefRes.json();
+    const savedPref = (prefData.preferences || []).find(
+      (p: { $type?: string; items?: { type: string; value: string }[] }) =>
+        p.$type === 'app.bsky.actor.defs#savedFeedsPrefV2'
+    );
+    if (savedPref?.items) {
+      savedUris = savedPref.items
+        .filter((item: { type: string; value: string }) => item.type === 'feed')
+        .map((item: { value: string }) => item.value);
+    }
+  }
+
+  // 2. Hydrate metadata (name, avatar, description) for saved feed URIs
+  let savedFeeds: DitsFeedGenerator[] = [DEFAULT_DISCOVER_FEED];
+  if (savedUris.length > 0) {
+    const genUrl = new URL('/xrpc/app.bsky.feed.getFeedGenerators', BSKY_PDS_HOST);
+    savedUris.forEach((uri) => genUrl.searchParams.append('feeds', uri));
+
+    const genRes = await fetch(genUrl.toString(), { headers });
+    if (genRes.ok) {
+      const genData = await genRes.json();
+      const hydrated = (genData.feeds || []).map(
+        (f: {
+          uri: string;
+          displayName: string;
+          description?: string;
+          avatar?: string;
+          creator: { handle: string };
+        }) => ({
+          uri: f.uri,
+          displayName: f.displayName,
+          description: f.description,
+          avatar: f.avatar,
+          creatorHandle: f.creator.handle,
+        })
+      );
+      if (hydrated.length > 0) savedFeeds = hydrated;
+    }
+  }
+
+  // 3. Map popular feeds
+  const popData = popRes.ok ? await popRes.json() : { feeds: [] };
+  const popularFeeds: DitsFeedGenerator[] = (popData.feeds || []).map(
+    (f: {
+      uri: string;
+      displayName: string;
+      description?: string;
+      avatar?: string;
+      creator: { handle: string };
+    }) => ({
+      uri: f.uri,
+      displayName: f.displayName,
+      description: f.description,
+      avatar: f.avatar,
+      creatorHandle: f.creator.handle,
+    })
+  );
+
+  return { saved: savedFeeds, popular: popularFeeds };
+}
+
+
+export async function getAuthenticatedFeed(
+  session: AtpSessionData,
+  mode: 'following' | 'custom',
+  feedUri: string = DEFAULT_DISCOVER_FEED.uri,
+  cursor?: string
+) {
+  const endpoint = mode === 'following' ? ENDPOINT_TIMELINE : ENDPOINT_GET_FEED;
+  const url = new URL(endpoint, BSKY_PDS_HOST);
+  url.searchParams.set('limit', '30');
+
+  if (mode === 'custom') {
+    url.searchParams.set('feed', feedUri);
+  }
+  if (cursor) {
+    url.searchParams.set('cursor', cursor);
+  }
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${session.accessJwt}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Session expired or feed error (${res.status})`);
+  }
+
+  const data = (await res.json()) as {
+    feed: AppBskyFeedDefs.FeedViewPost[];
+    cursor?: string;
+  };
+
+  return {
+    posts: parseFeedItems(data.feed),
+    cursor: data.cursor,
+  };
 }

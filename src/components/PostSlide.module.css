@@ -488,3 +488,38 @@
 .repostedActive {
   color: #10b981 !important;
 }
+
+/* Complete Inline Quote / Reply Card (when screen space permits) */
+.fullInlineContextBox {
+  width: 100%;
+  text-align: left;
+  background-color: #1c1c1f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 14px 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.fullInlineContextBox:hover {
+  background-color: #222226;
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+.fullInlineContextText {
+  font-size: 15px;
+  line-height: 1.45;
+  color: #e4e4e7;
+  word-break: break-word;
+}
+
+.fullInlineContextImg {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-top: 2px;
+}

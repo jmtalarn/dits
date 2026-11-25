@@ -6,10 +6,10 @@ import { DitsPost, DitsSlideItem } from '@/lib/bsky';
 import VideoPlayer from './VideoPlayer';
 import QuoteTeaser from './QuoteTeaser';
 import MediaLightbox from './MediaLightbox';
-import styles from './PostSlide.module.css';
 import RichTextView from './RichTextView';
 import AuthorProfileModal from './AuthorProfileModal';
 import HashtagFeedModal from './HashtagFeedModal';
+import styles from './PostSlide.module.css';
 
 interface SlideCardProps {
     slide: DitsSlideItem;
@@ -24,12 +24,20 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
         altText?: string;
         video?: { playlist: string; thumbnail?: string };
     } | null>(null);
+
     const [mentionedDid, setMentionedDid] = useState<string | null>(null);
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
     const pointerStartX = useRef(0);
 
     const hasText = post.text.trim().length > 0;
-    const showTeaser = index === 0 && Boolean(post.quotePreview);
+    const hasContext = index === 0 && Boolean(post.quotePreview);
+
+    // Show the complete quoted/replied post inline on Slide 1 when there is plenty of screen space
+    const combinedTextLength = post.text.length + (post.quotePreview?.text.length || 0);
+    const canShowFullContext =
+        hasContext &&
+        slide.type === 'text' &&
+        combinedTextLength <= 260;
 
     const getTextClass = (text?: string, isMediaCaption = false) => {
         const len = text?.length || 0;
@@ -57,16 +65,63 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                 onTagClick={(tag) => setSelectedTag(tag)}
                             />
                         </p>
-                        {showTeaser && post.quotePreview && (
-                            <QuoteTeaser quote={post.quotePreview} onSelect={onGoToQuote} />
+
+                        {hasContext && post.quotePreview && (
+                            canShowFullContext ? (
+                                <div
+                                    onClick={onGoToQuote}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => e.key === 'Enter' && onGoToQuote()}
+                                    className={styles.fullInlineContextBox}
+                                >
+                                    <div className={styles.quoteTeaserHeader}>
+                                        {post.quotePreview.authorAvatar && (
+                                            <img
+                                                src={post.quotePreview.authorAvatar}
+                                                alt={post.quotePreview.authorHandle}
+                                                className={styles.quoteTeaserAvatar}
+                                            />
+                                        )}
+                                        <span className={styles.quoteTeaserAuthor}>
+                                            {post.quotePreview.isReplyContext
+                                                ? `Replying to @${post.quotePreview.authorHandle}`
+                                                : post.quotePreview.authorName}
+                                        </span>
+                                        <span className={styles.quoteTeaserAction}>Swipe →</span>
+                                    </div>
+
+                                    {post.quotePreview.text && (
+                                        <p className={styles.fullInlineContextText}>
+                                            <RichTextView
+                                                text={post.quotePreview.text}
+                                                facets={post.quotePreview.facets}
+                                                onMentionClick={(did) => setMentionedDid(did)}
+                                                onTagClick={(tag) => setSelectedTag(tag)}
+                                            />
+                                        </p>
+                                    )}
+
+                                    {post.quotePreview.image && (
+                                        <img
+                                            src={post.quotePreview.image}
+                                            alt="Context media"
+                                            className={styles.fullInlineContextImg}
+                                            draggable={false}
+                                        />
+                                    )}
+                                </div>
+                            ) : (
+                                <QuoteTeaser quote={post.quotePreview} onSelect={onGoToQuote} />
+                            )
                         )}
                     </div>
                 )}
 
-                {/* 2. IMAGE OR VIDEO SLIDE */}
-                {(slide.type === 'image' || slide.type === 'video') && (
+                {/* 2. IMAGE, VIDEO, OR GIF SLIDE */}
+                {(slide.type === 'image' || slide.type === 'video' || slide.type === 'gif') && (
                     <>
-                        <div className={`${styles.cardMediaBox} ${!hasText && !showTeaser ? styles.cardMediaBoxFull : ''}`}>
+                        <div className={`${styles.cardMediaBox} ${!hasText && !hasContext ? styles.cardMediaBoxFull : ''}`}>
                             {slide.type === 'image' && slide.image && (
                                 <>
                                     <img
@@ -95,8 +150,28 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                     onFullscreen={() => setFullscreenMedia({ video: slide.video })}
                                 />
                             )}
+                            {slide.type === 'gif' && slide.gifUrl && (
+                            slide.gifUrl.split('?').at(0)?.toLowerCase().endsWith('.gif') ? (
+                                <img
+                                src={slide.gifUrl}
+                                alt={slide.image?.alt || 'GIF'}
+                                className={styles.imageElement}
+                                draggable={false}
+                                />
+                            ) : (
+                                <video
+                                src={slide.gifUrl}
+                                poster={slide.image?.fullsize}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className={styles.videoElement}
+                                />
+                            )
+                            )}
                         </div>
-                        {(hasText || showTeaser) && (
+                        {(hasText || hasContext) && (
                             <div className={styles.cardCaptionBody}>
                                 {hasText && (
                                     <p className={getTextClass(post.text, true)}>
@@ -108,7 +183,7 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                         />
                                     </p>
                                 )}
-                                {showTeaser && post.quotePreview && (
+                                {hasContext && post.quotePreview && (
                                     <QuoteTeaser quote={post.quotePreview} onSelect={onGoToQuote} />
                                 )}
                             </div>
@@ -116,7 +191,7 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                     </>
                 )}
 
-                {/* 3. QUOTE / THREAD SLIDE */}
+                {/* 3. QUOTE / THREAD SLIDE (Slide 2+) */}
                 {slide.type === 'quote' && slide.quote && (
                     <>
                         <div className={styles.quotedByHeader}>
@@ -153,9 +228,9 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
 
                         {slide.quote.text && (
                             <div className={slide.quote.image ? styles.cardCaptionBody : styles.textOnlyBody}>
-                                <p className={getTextClass(slide.quote.text)}>
+                                <p className={getTextClass(slide.quote.text, Boolean(slide.quote.image))}>
                                     <RichTextView
-                                        text={slide.quote.text || ''}
+                                        text={slide.quote.text}
                                         facets={slide.quote.facets}
                                         onMentionClick={(did) => setMentionedDid(did)}
                                         onTagClick={(tag) => setSelectedTag(tag)}
@@ -175,12 +250,14 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                     onClose={() => setFullscreenMedia(null)}
                 />
             )}
+
             {mentionedDid && (
                 <AuthorProfileModal
                     actor={mentionedDid}
                     onClose={() => setMentionedDid(null)}
                 />
             )}
+
             {selectedTag && (
                 <HashtagFeedModal
                     tag={selectedTag}
