@@ -12,13 +12,15 @@ import {
 import PostSlide from './PostSlide';
 import LoginModal from './LoginModal';
 import styles from './FeedContainer.module.css';
-import navStyles from './LoginModal.module.css';
 import { DitsFullLoader, DitsMiniSpinner } from './DitsLoader';
+import { Plus } from 'lucide-react';
+import ComposerModal from './ComposerModal';
 
 export default function ClientFeed() {
     const [session, setSession] = useState<AtpSessionData | null>(null);
     const [activeTab, setActiveTab] = useState<'following' | 'discover'>('following');
     const [showLogin, setShowLogin] = useState(false);
+    const [showComposer, setShowComposer] = useState(false);
 
     const [posts, setPosts] = useState<DitsPost[]>([]);
     const [cursor, setCursor] = useState<string | undefined>(undefined);
@@ -99,40 +101,53 @@ export default function ClientFeed() {
     return (
         <>
             {/* Top Floating Bar: Feed Tabs + Login/Logout */}
-            <header className={navStyles.topBar}>
+            {/* Top Floating Bar: Feed Tabs + Compose (+) + Login/Logout */}
+            <header className={styles.topBar}>
                 {session ? (
-                    <div className={navStyles.tabs}>
+                    <div className={styles.navGroup}>
+                        <div className={styles.tabs}>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('following')}
+                                className={`${styles.tabBtn} ${activeTab === 'following' ? styles.tabBtnActive : ''}`}
+                            >
+                                Following
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('discover')}
+                                className={`${styles.tabBtn} ${activeTab === 'discover' ? styles.tabBtnActive : ''}`}
+                            >
+                                Discover
+                            </button>
+                        </div>
+
                         <button
                             type="button"
-                            onClick={() => setActiveTab('following')}
-                            className={`${navStyles.tabBtn} ${activeTab === 'following' ? navStyles.tabBtnActive : ''}`}
+                            onClick={() => setShowComposer(true)}
+                            aria-label="New post"
+                            className={styles.composeBtn}
                         >
-                            Following
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('discover')}
-                            className={`${navStyles.tabBtn} ${activeTab === 'discover' ? navStyles.tabBtnActive : ''}`}
-                        >
-                            Discover
+                            <Plus size={18} strokeWidth={2.5} />
                         </button>
                     </div>
                 ) : (
-                    <div className={navStyles.tabs}>
-                        <span className={navStyles.tabBtnActive}>Dits · Explore</span>
+                    <div className={styles.tabs}>
+                        <span className={styles.tabBtnActive}>Dits · Explore</span>
                     </div>
                 )}
 
                 {session ? (
-                    <button type="button" onClick={handleLogout} className={navStyles.authBtn}>
+                    <button type="button" onClick={handleLogout} className={styles.authBtn}>
                         @{session.handle.split('.').at(0)} · Exit
                     </button>
                 ) : (
-                    <button type="button" onClick={() => setShowLogin(true)} className={navStyles.authBtn}>
+                    <button type="button" onClick={() => setShowLogin(true)} className={styles.authBtn}>
                         Sign in
                     </button>
                 )}
             </header>
+
 
             {loading ? (
                 <DitsFullLoader />
@@ -172,6 +187,17 @@ export default function ClientFeed() {
                         setShowLogin(false);
                     }}
                     onClose={() => setShowLogin(false)}
+                />
+            )}
+            {session && showComposer && (
+                <ComposerModal
+                    session={session}
+                    onPostCreated={(newPost) => {
+                        setPosts((prev) => [newPost, ...prev]);
+                        setShowComposer(false);
+                        feedRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    onClose={() => setShowComposer(false)}
                 />
             )}
         </>

@@ -568,3 +568,93 @@ export async function toggleReaction(
   const data = (await res.json()) as { uri: string };
   return data.uri;
 }
+
+export async function createDitsPost(
+  session: AtpSessionData,
+  text: string,
+  imageFiles: File[] = []
+): Promise<DitsPost> {
+  const uploadedImages: { alt: string; image: unknown }[] = [];
+  const localPreviews: { fullsize: string; alt: string }[] = [];
+
+  // 1. Upload any attached images as blobs first
+  for (const file of imageFiles.slice(0, 4)) {
+    const uploadRes = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.uploadBlob`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': file.type || 'image/jpeg',
+        Authorization: `Bearer ${session.accessJwt}`,
+      },
+      body: file,
+    });
+
+    if (!uploadRes.ok) {
+      throw new Error(`Failed to upload image: ${file.name}`);
+    }
+
+    const uploadData = await uploadRes.json();
+    uploadedImages.push({
+      alt: '',
+      image: uploadData.blob,
+    });
+    localPreviews.push({
+      fullsize: URL.createObjectURL(file),
+      alt: file.name,
+    });
+  }
+
+  // 2. Build the AT Protocol post record
+  const record: Record<string, unknown> = {
+    $type: 'app.bsky.feed.post',
+    text: text.trim(),
+    createdAt: new Date().toISOString(),
+  };
+
+  if (uploadedImages.length > 0) {
+    record.embed = {
+      $type: 'app.bsky.embed.images',
+      images: uploadedImages,
+    };
+  }
+
+  const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.accessJwt}`,
+    },
+    body: JSON.stringify({
+      repo: session.did,
+      collection: 'app.bsky.feed.post',
+      record,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to publish post');
+  }
+
+  const created = (await res.json()) as { uri: string; cid: string };
+
+  // Build slides for immediate optimistic insertion into Dits
+  const slides: DitsSlideItem[] =
+    localPreviews.length > 0
+      ? localPreviews.map((img) => ({ type: 'image', image: img }))
+      : [{ type: 'text', text: text.trim() }];
+
+  return {
+    uri: created.uri,
+    cid: created.cid,
+    author: {
+      did: session.did,
+      handle: session.handle,
+      displayName: session.handle,
+    },
+    text: text.trim(),
+    indexedAt: new Date().toISOString(),
+    likeCount: 0,
+    replyCount: 0,
+    repostCount: 0,
+    slides,
+  };
+}
