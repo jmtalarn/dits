@@ -40,7 +40,7 @@ export interface DitsSlideItem {
     type: 'text' | 'image' | 'video' | 'quote' | 'gif';
     text?: string;
     facets?: AppBskyRichtextFacet.Main[];
-    gifUrl?: string; 
+    gifUrl?: string;
     image?: {
         fullsize: string;
         alt: string;
@@ -80,88 +80,88 @@ export interface DitsPost {
     quotePreview?: DitsQuoteData;
 }
 function extractGifSlide(embed: unknown): DitsSlideItem | null {
-  if (!AppBskyEmbedExternal.isView(embed)) return null;
+    if (!AppBskyEmbedExternal.isView(embed)) return null;
 
-  const view = embed as AppBskyEmbedExternal.View;
-  const rawUri = view.external.uri || '';
-  if (!rawUri) return null;
+    const view = embed as AppBskyEmbedExternal.View;
+    const rawUri = view.external.uri || '';
+    if (!rawUri) return null;
 
-  try {
-    const parsed = new URL(rawUri);
-    const pathname = parsed.pathname.toLowerCase();
-    const isTenorOrGiphy =
-      parsed.hostname.includes('tenor.com') || parsed.hostname.includes('giphy.com');
-    const isMediaFile =
-      pathname.endsWith('.mp4') || pathname.endsWith('.gif') || pathname.endsWith('.webm');
+    try {
+        const parsed = new URL(rawUri);
+        const pathname = parsed.pathname.toLowerCase();
+        const isTenorOrGiphy =
+            parsed.hostname.includes('tenor.com') || parsed.hostname.includes('giphy.com');
+        const isMediaFile =
+            pathname.endsWith('.mp4') || pathname.endsWith('.gif') || pathname.endsWith('.webm');
 
-    if (isTenorOrGiphy || isMediaFile) {
-      return {
-        type: 'gif',
-        gifUrl: rawUri,
-        image: view.external.thumb
-          ? { fullsize: view.external.thumb, alt: view.external.title || 'GIF' }
-          : undefined,
-      };
+        if (isTenorOrGiphy || isMediaFile) {
+            return {
+                type: 'gif',
+                gifUrl: rawUri,
+                image: view.external.thumb
+                    ? { fullsize: view.external.thumb, alt: view.external.title || 'GIF' }
+                    : undefined,
+            };
+        }
+    } catch {
+        return null;
     }
-  } catch {
-    return null;
-  }
 
-  return null;
+    return null;
 }
 
 
 // 1. Extract the primary slides (text, images, or video) from a post
 function extractPrimarySlides(post: AppBskyFeedDefs.PostView): DitsSlideItem[] {
-  const record = post.record as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
-  const text = record.text || '';
-  const facets = record.facets;
-  const embed = post.embed;
+    const record = post.record as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
+    const text = record.text || '';
+    const facets = record.facets;
+    const embed = post.embed;
 
-  // 1. Image gallery
-  if (AppBskyEmbedImages.isView(embed)) {
-    return embed.images.map((img) => ({
-      type: 'image',
-      image: { fullsize: img.fullsize, alt: img.alt },
-    }));
-  }
-
-  // 2. Video
-  if (AppBskyEmbedVideo.isView(embed)) {
-    return [{
-      type: 'video',
-      video: { playlist: embed.playlist, thumbnail: embed.thumbnail },
-    }];
-  }
-
-  // 3. Standalone Tenor / Giphy GIF
-  const directGif = extractGifSlide(embed);
-  if (directGif) return [directGif];
-
-  // 4. Quote with media (Images, Video, or GIF)
-  if (AppBskyEmbedRecordWithMedia.isView(embed)) {
-    if (AppBskyEmbedImages.isView(embed.media)) {
-      return embed.media.images.map((img) => ({
-        type: 'image',
-        image: { fullsize: img.fullsize, alt: img.alt },
-      }));
+    // 1. Image gallery
+    if (AppBskyEmbedImages.isView(embed)) {
+        return embed.images.map((img) => ({
+            type: 'image',
+            image: { fullsize: img.fullsize, alt: img.alt },
+        }));
     }
-    if (AppBskyEmbedVideo.isView(embed.media)) {
-      return [{
-        type: 'video',
-        video: { playlist: embed.media.playlist, thumbnail: embed.media.thumbnail },
-      }];
+
+    // 2. Video
+    if (AppBskyEmbedVideo.isView(embed)) {
+        return [{
+            type: 'video',
+            video: { playlist: embed.playlist, thumbnail: embed.thumbnail },
+        }];
     }
-    const quotedGif = extractGifSlide(embed.media);
-    if (quotedGif) return [quotedGif];
-  }
 
-  // 5. Text-only fallback
-  if (text.trim().length > 0) {
-    return [{ type: 'text', text, facets }];
-  }
+    // 3. Standalone Tenor / Giphy GIF
+    const directGif = extractGifSlide(embed);
+    if (directGif) return [directGif];
 
-  return [];
+    // 4. Quote with media (Images, Video, or GIF)
+    if (AppBskyEmbedRecordWithMedia.isView(embed)) {
+        if (AppBskyEmbedImages.isView(embed.media)) {
+            return embed.media.images.map((img) => ({
+                type: 'image',
+                image: { fullsize: img.fullsize, alt: img.alt },
+            }));
+        }
+        if (AppBskyEmbedVideo.isView(embed.media)) {
+            return [{
+                type: 'video',
+                video: { playlist: embed.media.playlist, thumbnail: embed.media.thumbnail },
+            }];
+        }
+        const quotedGif = extractGifSlide(embed.media);
+        if (quotedGif) return [quotedGif];
+    }
+
+    // 5. Text-only fallback
+    if (text.trim().length > 0) {
+        return [{ type: 'text', text, facets }];
+    }
+
+    return [];
 }
 
 // 2. Build a context slide + teaser from either a Quoted Post OR a Reply Parent
@@ -396,6 +396,91 @@ export function getSavedSession(): AtpSessionData | null {
 export function logoutSession() {
     localStorage.removeItem(SESSION_STORAGE_KEY);
 }
+let activeRefreshPromise: Promise<AtpSessionData | null> | null = null;
+
+// Exchange the stored refreshJwt for a fresh accessJwt + refreshJwt pair
+export async function refreshStoredSession(
+    currentSession: AtpSessionData
+): Promise<AtpSessionData | null> {
+    // Deduplicate concurrent refresh calls if multiple requests fail at the same millisecond
+    if (activeRefreshPromise) return activeRefreshPromise;
+
+    activeRefreshPromise = (async () => {
+        try {
+            const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.server.refreshSession`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${currentSession.refreshJwt}`,
+                },
+            });
+
+            if (!res.ok) {
+                // Refresh token itself expired or was revoked -> clear session
+                logoutSession();
+                window.dispatchEvent(new Event('dits-session-expired'));
+                return null;
+            }
+
+            const data = await res.json();
+            const updatedSession: AtpSessionData = {
+                ...currentSession,
+                accessJwt: data.accessJwt,
+                refreshJwt: data.refreshJwt,
+                handle: data.handle || currentSession.handle,
+                did: data.did || currentSession.did,
+            };
+
+            localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updatedSession));
+            window.dispatchEvent(new CustomEvent('dits-session-updated', { detail: updatedSession }));
+            return updatedSession;
+        } catch {
+            return null;
+        } finally {
+            activeRefreshPromise = null;
+        }
+    })();
+
+    return activeRefreshPromise;
+}
+
+// Drop-in replacement for authenticated fetch() that silently refreshes expired tokens and retries once
+export async function authorizedFetch(
+    url: string,
+    init: RequestInit = {},
+    explicitSession?: AtpSessionData | null
+): Promise<Response> {
+    const session = explicitSession ?? getSavedSession();
+
+    // If no user is logged in, behave just like normal fetch()
+    if (!session) {
+        return fetch(url, init);
+    }
+
+    const makeRequest = (token: string) =>
+        fetch(url, {
+            ...init,
+            headers: {
+                ...init.headers,
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+    let res = await makeRequest(session.accessJwt);
+
+    if (res.status === 400 || res.status === 401) {
+        const cloned = res.clone();
+        const errBody = await cloned.json().catch(() => ({}));
+
+        if (res.status === 401 || errBody?.error === 'ExpiredToken') {
+            const refreshed = await refreshStoredSession(session);
+            if (refreshed) {
+                res = await makeRequest(refreshed.accessJwt);
+            }
+        }
+    }
+
+    return res;
+}
 
 export interface DitsComment {
     uri: string;
@@ -457,27 +542,27 @@ export async function postComment(
     const rt = new RichText({ text: text.trim() });
     await rt.detectFacets(new Agent(BSKY_PUBLIC_API));
 
-    const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.accessJwt}`,
-        },
-        body: JSON.stringify({
-            repo: session.did,
-            collection: 'app.bsky.feed.post',
-            record: {
-                $type: 'app.bsky.feed.post',
-                text: rt.text,
-                facets: rt.facets,
-                createdAt: new Date().toISOString(),
-                reply: {
-                    root: { uri: rootPost.uri, cid: rootPost.cid },
-                    parent: { uri: rootPost.uri, cid: rootPost.cid },
+    const res = await authorizedFetch(
+        `${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                repo: session.did,
+                collection: 'app.bsky.feed.post',
+                record: {
+                    $type: 'app.bsky.feed.post',
+                    text: rt.text,
+                    facets: rt.facets,
+                    createdAt: new Date().toISOString(),
+                    reply: {
+                        root: { uri: rootPost.uri, cid: rootPost.cid },
+                        parent: { uri: rootPost.uri, cid: rootPost.cid },
+                    },
                 },
-            },
-        }),
-    });
+            }),
+        }, session
+    );
 
     if (!res.ok) {
         throw new Error('Failed to post comment');
@@ -500,7 +585,7 @@ export async function toggleReaction(
     // If already liked/reposted, delete the existing record using its rkey (last segment of URI)
     if (existingRecordUri) {
         const rkey = existingRecordUri.split('/').pop();
-        const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.deleteRecord`, {
+        const res = await authorizedFetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.deleteRecord`,  {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -511,14 +596,14 @@ export async function toggleReaction(
                 collection,
                 rkey,
             }),
-        });
+        }, session);
 
         if (!res.ok) throw new Error('Failed to remove reaction');
         return undefined;
     }
 
     // Otherwise, create a new like or repost record
-    const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`, {
+    const res = await authorizedFetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -533,7 +618,7 @@ export async function toggleReaction(
                 createdAt: new Date().toISOString(),
             },
         }),
-    });
+    }, session);
 
     if (!res.ok) throw new Error('Failed to add reaction');
     const data = (await res.json()) as { uri: string };
@@ -550,14 +635,14 @@ export async function createDitsPost(
 
     // 1. Upload any attached images as blobs first
     for (const file of imageFiles.slice(0, 4)) {
-        const uploadRes = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.uploadBlob`, {
+        const uploadRes = await authorizedFetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.uploadBlob`, {
             method: 'POST',
             headers: {
                 'Content-Type': file.type || 'image/jpeg',
                 Authorization: `Bearer ${session.accessJwt}`,
             },
             body: file,
-        });
+        }, session);
 
         if (!uploadRes.ok) {
             throw new Error(`Failed to upload image: ${file.name}`);
@@ -592,7 +677,7 @@ export async function createDitsPost(
         };
     }
 
-    const res = await fetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`, {
+    const res = await authorizedFetch(`${BSKY_PDS_HOST}/xrpc/com.atproto.repo.createRecord`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -603,7 +688,7 @@ export async function createDitsPost(
             collection: 'app.bsky.feed.post',
             record,
         }),
-    });
+    }, session);
 
     if (!res.ok) {
         throw new Error('Failed to publish post');
@@ -648,51 +733,47 @@ export interface DitsProfile {
 }
 
 export async function getActorProfile(
-    actor: string,
-    session?: AtpSessionData | null
+  actor: string,
+  session?: AtpSessionData | null
 ): Promise<{ profile: DitsProfile; posts: DitsPost[] }> {
-    const host = session ? BSKY_PDS_HOST : BSKY_PUBLIC_API;
-    const headers: Record<string, string> = { Accept: 'application/json' };
-    if (session) {
-        headers.Authorization = `Bearer ${session.accessJwt}`;
-    }
+  const host = session ? BSKY_PDS_HOST : BSKY_PUBLIC_API;
+  const headers = { Accept: 'application/json' };
 
-    // 1. Fetch profile metadata
-    const profileUrl = new URL('/xrpc/app.bsky.actor.getProfile', host);
-    profileUrl.searchParams.set('actor', actor);
+  const profileUrl = new URL('/xrpc/app.bsky.actor.getProfile', host);
+  profileUrl.searchParams.set('actor', actor);
 
-    // 2. Fetch author's posts
-    const feedUrl = new URL(ENDPOINT_AUTHOR_FEED, host);
-    feedUrl.searchParams.set('actor', actor);
-    feedUrl.searchParams.set('filter', 'posts_no_replies');
-    feedUrl.searchParams.set('limit', '30');
+  const feedUrl = new URL(ENDPOINT_AUTHOR_FEED, host);
+  feedUrl.searchParams.set('actor', actor);
+  feedUrl.searchParams.set('filter', 'posts_no_replies');
+  feedUrl.searchParams.set('limit', '30');
 
-    const [profileRes, feedRes] = await Promise.all([
-        fetch(profileUrl.toString(), { headers }),
-        fetch(feedUrl.toString(), { headers }),
-    ]);
+  const [profileRes, feedRes] = await Promise.all([
+    authorizedFetch(profileUrl.toString(), { headers }, session),
+    authorizedFetch(feedUrl.toString(), { headers }, session),
+  ]);
 
-    if (!profileRes.ok) throw new Error('Could not load profile');
+  if (!profileRes.ok) throw new Error('Could not load profile');
 
-    const p = await profileRes.json();
-    const feedData = feedRes.ok ? await feedRes.json() : { feed: [] };
+  const p = await profileRes.json();
+  const feedData = feedRes.ok ? await feedRes.json() : { feed: [] };
 
-    return {
-        profile: {
-            did: p.did,
-            handle: p.handle,
-            displayName: p.displayName,
-            avatar: p.avatar,
-            banner: p.banner,
-            description: p.description,
-            followersCount: p.followersCount || 0,
-            followsCount: p.followsCount || 0,
-            postsCount: p.postsCount || 0,
-            viewerFollowUri: p.viewer?.following,
-        },
-        posts: parseFeedItems(feedData.feed || []),
-    };
+  return {
+    profile: {
+      did: p.did,
+      handle: p.handle,
+      displayName: p.displayName,
+      avatar: p.avatar,
+      banner: p.banner,
+      description: p.description,
+      followersCount: p.followersCount || 0,
+      followsCount: p.followsCount || 0,
+      postsCount: p.postsCount || 0,
+      viewerFollowUri: p.viewer?.following,
+    },
+    posts: parseFeedItems(feedData.feed || []),
+  };
 }
+
 
 export async function toggleFollowActor(
     session: AtpSessionData,
@@ -741,189 +822,182 @@ export async function toggleFollowActor(
 
 // Fetch posts matching a specific #hashtag (sorted by top or latest)
 export async function getHashtagFeed(
-    tag: string,
-    session?: AtpSessionData | null,
-    cursor?: string
+  tag: string,
+  session?: AtpSessionData | null,
+  cursor?: string
 ) {
-    const host = session ? BSKY_PDS_HOST : BSKY_PUBLIC_API;
-    const url = new URL(ENDPOINT_SEARCH_POSTS, host);
-    url.searchParams.set('q', `#${tag.replace(/^#/, '')}`);
-    url.searchParams.set('tag', tag.replace(/^#/, ''));
-    url.searchParams.set('sort', 'top');
-    url.searchParams.set('limit', '25');
-    if (cursor) {
-        url.searchParams.set('cursor', cursor);
-    }
+  const host = session ? BSKY_PDS_HOST : BSKY_PUBLIC_API;
+  const url = new URL(ENDPOINT_SEARCH_POSTS, host);
+  url.searchParams.set('q', `#${tag.replace(/^#/, '')}`);
+  url.searchParams.set('tag', tag.replace(/^#/, ''));
+  url.searchParams.set('sort', 'top');
+  url.searchParams.set('limit', '25');
+  if (cursor) {
+    url.searchParams.set('cursor', cursor);
+  }
 
-    const headers: Record<string, string> = { Accept: 'application/json' };
-    if (session) {
-        headers.Authorization = `Bearer ${session.accessJwt}`;
-    }
+  const res = await authorizedFetch(
+    url.toString(),
+    { headers: { Accept: 'application/json' } },
+    session
+  );
+  if (!res.ok) throw new Error('Could not load hashtag feed');
 
-    const res = await fetch(url.toString(), { headers });
-    if (!res.ok) throw new Error('Could not load hashtag feed');
+  const data = (await res.json()) as {
+    posts: AppBskyFeedDefs.PostView[];
+    cursor?: string;
+  };
 
-    const data = (await res.json()) as {
-        posts: AppBskyFeedDefs.PostView[];
-        cursor?: string;
-    };
+  const wrappedFeed = (data.posts || []).map((post) => ({ post }));
 
-    // Wrap PostView items into FeedViewPost shape so parseFeedItems handles all media/quotes/facets
-    const wrappedFeed = (data.posts || []).map((post) => ({ post }));
-
-    return {
-        posts: parseFeedItems(wrappedFeed),
-        cursor: data.cursor,
-    };
+  return {
+    posts: parseFeedItems(wrappedFeed),
+    cursor: data.cursor,
+  };
 }
+
 export async function getMyAvatar(session: AtpSessionData): Promise<string | undefined> {
     const url = new URL('/xrpc/app.bsky.actor.getProfile', BSKY_PDS_HOST);
     url.searchParams.set('actor', session.did);
 
-    const res = await fetch(url.toString(), {
-        headers: {
-            Accept: 'application/json',
-            Authorization: `Bearer ${session.accessJwt}`,
-        },
-    });
-
+    const res = await authorizedFetch(url.toString(), { headers: { Accept: 'application/json' } }, session);
     if (!res.ok) return undefined;
     const data = await res.json();
     return data.avatar;
 }
 
 export interface DitsFeedGenerator {
-  uri: string;
-  displayName: string;
-  description?: string;
-  avatar?: string;
-  creatorHandle: string;
+    uri: string;
+    displayName: string;
+    description?: string;
+    avatar?: string;
+    creatorHandle: string;
 }
 
 export const DEFAULT_DISCOVER_FEED: DitsFeedGenerator = {
-  uri: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot',
-  displayName: 'Discover',
-  creatorHandle: 'bsky.app',
+    uri: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot',
+    displayName: 'Discover',
+    creatorHandle: 'bsky.app',
 };
 
 // Fetch the logged-in user's saved/pinned feeds + popular Bluesky feeds
 export async function getAvailableFeeds(
-  session: AtpSessionData
+    session: AtpSessionData
 ): Promise<{ saved: DitsFeedGenerator[]; popular: DitsFeedGenerator[] }> {
-  const headers = {
-    Accept: 'application/json',
-    Authorization: `Bearer ${session.accessJwt}`,
-  };
+    const headers = {
+        Accept: 'application/json',
+        Authorization: `Bearer ${session.accessJwt}`,
+    };
 
-  // 1. Get user preferences to extract saved feed URIs
-  const prefUrl = new URL('/xrpc/app.bsky.actor.getPreferences', BSKY_PDS_HOST);
-  const popUrl = new URL('/xrpc/app.bsky.unspecced.getPopularFeedGenerators', BSKY_PDS_HOST);
-  popUrl.searchParams.set('limit', '15');
+    // 1. Get user preferences to extract saved feed URIs
+    const prefUrl = new URL('/xrpc/app.bsky.actor.getPreferences', BSKY_PDS_HOST);
+    const popUrl = new URL('/xrpc/app.bsky.unspecced.getPopularFeedGenerators', BSKY_PDS_HOST);
+    popUrl.searchParams.set('limit', '15');
 
-  const [prefRes, popRes] = await Promise.all([
-    fetch(prefUrl.toString(), { headers }),
-    fetch(popUrl.toString(), { headers }),
-  ]);
+    const [prefRes, popRes] = await Promise.all([
+        authorizedFetch(prefUrl.toString(), { headers: { Accept: 'application/json' } }),
+        authorizedFetch(popUrl.toString(), { headers: { Accept: 'application/json' } }),
+    ]);
 
-  let savedUris: string[] = [];
-  if (prefRes.ok) {
-    const prefData = await prefRes.json();
-    const savedPref = (prefData.preferences || []).find(
-      (p: { $type?: string; items?: { type: string; value: string }[] }) =>
-        p.$type === 'app.bsky.actor.defs#savedFeedsPrefV2'
-    );
-    if (savedPref?.items) {
-      savedUris = savedPref.items
-        .filter((item: { type: string; value: string }) => item.type === 'feed')
-        .map((item: { value: string }) => item.value);
+    let savedUris: string[] = [];
+    if (prefRes.ok) {
+        const prefData = await prefRes.json();
+        const savedPref = (prefData.preferences || []).find(
+            (p: { $type?: string; items?: { type: string; value: string }[] }) =>
+                p.$type === 'app.bsky.actor.defs#savedFeedsPrefV2'
+        );
+        if (savedPref?.items) {
+            savedUris = savedPref.items
+                .filter((item: { type: string; value: string }) => item.type === 'feed')
+                .map((item: { value: string }) => item.value);
+        }
     }
-  }
 
-  // 2. Hydrate metadata (name, avatar, description) for saved feed URIs
-  let savedFeeds: DitsFeedGenerator[] = [DEFAULT_DISCOVER_FEED];
-  if (savedUris.length > 0) {
-    const genUrl = new URL('/xrpc/app.bsky.feed.getFeedGenerators', BSKY_PDS_HOST);
-    savedUris.forEach((uri) => genUrl.searchParams.append('feeds', uri));
+    // 2. Hydrate metadata (name, avatar, description) for saved feed URIs
+    let savedFeeds: DitsFeedGenerator[] = [DEFAULT_DISCOVER_FEED];
+    if (savedUris.length > 0) {
+        const genUrl = new URL('/xrpc/app.bsky.feed.getFeedGenerators', BSKY_PDS_HOST);
+        savedUris.forEach((uri) => genUrl.searchParams.append('feeds', uri));
 
-    const genRes = await fetch(genUrl.toString(), { headers });
-    if (genRes.ok) {
-      const genData = await genRes.json();
-      const hydrated = (genData.feeds || []).map(
+        const genRes = await fetch(genUrl.toString(), { headers });
+        if (genRes.ok) {
+            const genData = await genRes.json();
+            const hydrated = (genData.feeds || []).map(
+                (f: {
+                    uri: string;
+                    displayName: string;
+                    description?: string;
+                    avatar?: string;
+                    creator: { handle: string };
+                }) => ({
+                    uri: f.uri,
+                    displayName: f.displayName,
+                    description: f.description,
+                    avatar: f.avatar,
+                    creatorHandle: f.creator.handle,
+                })
+            );
+            if (hydrated.length > 0) savedFeeds = hydrated;
+        }
+    }
+
+    // 3. Map popular feeds
+    const popData = popRes.ok ? await popRes.json() : { feeds: [] };
+    const popularFeeds: DitsFeedGenerator[] = (popData.feeds || []).map(
         (f: {
-          uri: string;
-          displayName: string;
-          description?: string;
-          avatar?: string;
-          creator: { handle: string };
+            uri: string;
+            displayName: string;
+            description?: string;
+            avatar?: string;
+            creator: { handle: string };
         }) => ({
-          uri: f.uri,
-          displayName: f.displayName,
-          description: f.description,
-          avatar: f.avatar,
-          creatorHandle: f.creator.handle,
+            uri: f.uri,
+            displayName: f.displayName,
+            description: f.description,
+            avatar: f.avatar,
+            creatorHandle: f.creator.handle,
         })
-      );
-      if (hydrated.length > 0) savedFeeds = hydrated;
-    }
-  }
+    );
 
-  // 3. Map popular feeds
-  const popData = popRes.ok ? await popRes.json() : { feeds: [] };
-  const popularFeeds: DitsFeedGenerator[] = (popData.feeds || []).map(
-    (f: {
-      uri: string;
-      displayName: string;
-      description?: string;
-      avatar?: string;
-      creator: { handle: string };
-    }) => ({
-      uri: f.uri,
-      displayName: f.displayName,
-      description: f.description,
-      avatar: f.avatar,
-      creatorHandle: f.creator.handle,
-    })
-  );
-
-  return { saved: savedFeeds, popular: popularFeeds };
+    return { saved: savedFeeds, popular: popularFeeds };
 }
 
 
 export async function getAuthenticatedFeed(
-  session: AtpSessionData,
-  mode: 'following' | 'custom',
-  feedUri: string = DEFAULT_DISCOVER_FEED.uri,
-  cursor?: string
+    session: AtpSessionData,
+    mode: 'following' | 'custom',
+    feedUri: string = DEFAULT_DISCOVER_FEED.uri,
+    cursor?: string
 ) {
-  const endpoint = mode === 'following' ? ENDPOINT_TIMELINE : ENDPOINT_GET_FEED;
-  const url = new URL(endpoint, BSKY_PDS_HOST);
-  url.searchParams.set('limit', '30');
+    const endpoint = mode === 'following' ? ENDPOINT_TIMELINE : ENDPOINT_GET_FEED;
+    const url = new URL(endpoint, BSKY_PDS_HOST);
+    url.searchParams.set('limit', '30');
 
-  if (mode === 'custom') {
-    url.searchParams.set('feed', feedUri);
-  }
-  if (cursor) {
-    url.searchParams.set('cursor', cursor);
-  }
+    if (mode === 'custom') {
+        url.searchParams.set('feed', feedUri);
+    }
+    if (cursor) {
+        url.searchParams.set('cursor', cursor);
+    }
 
-  const res = await fetch(url.toString(), {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${session.accessJwt}`,
-    },
-  });
+    const res = await authorizedFetch(url.toString(),  {
+        headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${session.accessJwt}`,
+        },
+    }, session);
 
-  if (!res.ok) {
-    throw new Error(`Session expired or feed error (${res.status})`);
-  }
+    if (!res.ok) {
+        throw new Error(`Session expired or feed error (${res.status})`);
+    }
 
-  const data = (await res.json()) as {
-    feed: AppBskyFeedDefs.FeedViewPost[];
-    cursor?: string;
-  };
+    const data = (await res.json()) as {
+        feed: AppBskyFeedDefs.FeedViewPost[];
+        cursor?: string;
+    };
 
-  return {
-    posts: parseFeedItems(data.feed),
-    cursor: data.cursor,
-  };
+    return {
+        posts: parseFeedItems(data.feed),
+        cursor: data.cursor,
+    };
 }
