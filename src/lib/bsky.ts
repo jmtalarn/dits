@@ -294,9 +294,12 @@ export async function getQuotedThreadSlides(
 // Shared parser to turn raw Bluesky FeedViewPost items into DitsPost[]
 function parseFeedItems(feed: AppBskyFeedDefs.FeedViewPost[]): DitsPost[] {
     const ditsPosts: DitsPost[] = [];
+  const seenUris = new Set<string>();
 
     for (const item of feed) {
         const post = item.post;
+        if (seenUris.has(post.uri)) continue;
+        seenUris.add(post.uri);
         const record = post.record as { text?: string };
         const embed = post.embed;
         const postText = record.text || '';
