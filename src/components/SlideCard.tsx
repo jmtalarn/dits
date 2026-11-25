@@ -124,7 +124,8 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                 <img src={post.author.avatar} alt={post.author.handle} className={styles.quotedByAvatar} />
                             )}
                             <span>
-                                Quoted by <strong>@{post.author.handle}</strong>
+                                {post.quotePreview?.isReplyContext ? 'In reply to ' : 'Quoted by '}
+                                <strong>@{post.author.handle}</strong>
                                 {index > 1 ? ` · Part ${index}` : ''}
                             </span>
                         </div>

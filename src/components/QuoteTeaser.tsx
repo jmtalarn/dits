@@ -19,7 +19,9 @@ export default function QuoteTeaser({ quote, onSelect }: QuoteTeaserProps) {
             className={styles.quoteTeaserAvatar}
           />
         )}
-        <span className={styles.quoteTeaserAuthor}>@{quote.authorHandle}</span>
+        <span className={styles.quoteTeaserAuthor}>
+          {quote.isReplyContext ? `Replying to @${quote.authorHandle}` : `@${quote.authorHandle}`}
+        </span>
         <span className={styles.quoteTeaserAction}>Llisca →</span>
       </div>
       <p className={styles.quoteTeaserText}>{quote.text}</p>
