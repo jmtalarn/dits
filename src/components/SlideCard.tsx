@@ -10,6 +10,7 @@ import RichTextView from './RichTextView';
 import AuthorProfileModal from './AuthorProfileModal';
 import HashtagFeedModal from './HashtagFeedModal';
 import styles from './PostSlide.module.css';
+import ExternalLinkCard from './ExternalLinkCard';
 
 interface SlideCardProps {
     slide: DitsSlideItem;
@@ -65,7 +66,9 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                 onTagClick={(tag) => setSelectedTag(tag)}
                             />
                         </p>
-
+                        {index === 0 && post.externalLink && (
+                            <ExternalLinkCard link={post.externalLink} />
+                        )}
                         {hasContext && post.quotePreview && (
                             canShowFullContext ? (
                                 <div
@@ -151,24 +154,24 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                 />
                             )}
                             {slide.type === 'gif' && slide.gifUrl && (
-                            slide.gifUrl.split('?').at(0)?.toLowerCase().endsWith('.gif') ? (
-                                <img
-                                src={slide.gifUrl}
-                                alt={slide.image?.alt || 'GIF'}
-                                className={styles.imageElement}
-                                draggable={false}
-                                />
-                            ) : (
-                                <video
-                                src={slide.gifUrl}
-                                poster={slide.image?.fullsize}
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
-                                className={styles.videoElement}
-                                />
-                            )
+                                slide.gifUrl.split('?').at(0)?.toLowerCase().endsWith('.gif') ? (
+                                    <img
+                                        src={slide.gifUrl}
+                                        alt={slide.image?.alt || 'GIF'}
+                                        className={styles.imageElement}
+                                        draggable={false}
+                                    />
+                                ) : (
+                                    <video
+                                        src={slide.gifUrl}
+                                        poster={slide.image?.fullsize}
+                                        autoPlay
+                                        loop
+                                        muted
+                                        playsInline
+                                        className={styles.videoElement}
+                                    />
+                                )
                             )}
                         </div>
                         {(hasText || hasContext) && (

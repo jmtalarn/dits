@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Plus, User, LogOut } from 'lucide-react';
+import { Plus, User, LogOut, Shield } from 'lucide-react';
 import { AtpSessionData } from '@atproto/api';
 import {
     getVisualFeed,
@@ -21,13 +21,16 @@ import { DitsFullLoader, DitsMiniSpinner } from './DitsLoader';
 import styles from './FeedContainer.module.css';
 import FeedPickerModal from './FeedPickerModal';
 
+import ContentFilterModal from './ContentFilterModal';
+
 export default function ClientFeed() {
     const [session, setSession] = useState<AtpSessionData | null>(null);
     const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);
     const [activeTab, setActiveTab] = useState<'following' | 'custom'>('following');
     const [selectedFeed, setSelectedFeed] = useState<DitsFeedGenerator>(DEFAULT_DISCOVER_FEED);
     const [showFeedPicker, setShowFeedPicker] = useState(false);
-
+    const [showFilters, setShowFilters] = useState(false);
+    const [filterVersion, setFilterVersion] = useState(0);
 
     const [showLogin, setShowLogin] = useState(false);
     const [showComposer, setShowComposer] = useState(false);
@@ -73,7 +76,7 @@ export default function ClientFeed() {
             }
         }
         loadInitial();
-    }, [session, activeTab, selectedFeed.uri]);
+    }, [session, activeTab, selectedFeed.uri, filterVersion]);
 
     const loadMore = useCallback(async () => {
         if (loadingMore || !cursor) return;
@@ -146,6 +149,17 @@ export default function ClientFeed() {
                                 >
                                     <User size={15} />
                                     <span>My Profile</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowMenu(false);
+                                        setShowFilters(true);
+                                    }}
+                                    className={styles.dropdownItem}
+                                >
+                                    <Shield size={15} />
+                                    <span>Content Filters</span>
                                 </button>
                                 <button
                                     type="button"
@@ -271,6 +285,14 @@ export default function ClientFeed() {
                         setShowFeedPicker(false);
                     }}
                     onClose={() => setShowFeedPicker(false)}
+                />
+            )}
+            {showFilters && (
+                <ContentFilterModal
+                    onClose={() => {
+                        setShowFilters(false);
+                        setFilterVersion((v) => v + 1);
+                    }}
                 />
             )}
         </>
