@@ -1,17 +1,23 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "Dits — Dopamine in the Sky",
-  description: "A visual Bluesky client",
-};
 
 export const viewport: Viewport = {
-  width: "device-width",
+  themeColor: '#000000',
+  width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#000000",
+};
+
+export const metadata: Metadata = {
+  title: 'Dits',
+  description: 'A swipe-first, full-screen visual client for Bluesky.',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Dits',
+  },
 };
 
 export default function RootLayout({
