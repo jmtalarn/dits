@@ -109,3 +109,19 @@ export interface DitsFeedGenerator {
 
 export type NsfwLabel = 'porn' | 'sexual' | 'nudity' | 'graphic-media' | 'gore';
 export type NsfwFilterConfig = Record<NsfwLabel, boolean>;
+
+export interface DitsNotification {
+  uri: string;
+  cid: string;
+  reason: 'like' | 'repost' | 'follow' | 'mention' | 'reply' | 'quote' | 'starterpack-joined' | string;
+  reasonSubject?: string;
+  isRead: boolean;
+  indexedAt: string;
+  author: {
+    did: string;
+    handle: string;
+    displayName?: string;
+    avatar?: string;
+  };
+  recordText?: string;
+}

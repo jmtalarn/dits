@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Plus, User, LogOut, Shield, RefreshCw } from 'lucide-react';
+import { Plus, User, LogOut, Shield, RefreshCw, Bell } from 'lucide-react';
 import { AtpSessionData } from '@atproto/api';
 import {
     getVisualFeed,
@@ -13,6 +13,7 @@ import {
     DitsFeedGenerator,
     DitsPost,
     markThreadUrisSeen,
+    getUnreadNotificationCount,
 } from '@/lib/bsky';
 import PostSlide from './PostSlide';
 import LoginModal from './LoginModal';
@@ -23,6 +24,7 @@ import styles from './FeedContainer.module.css';
 import FeedPickerModal from './FeedPickerModal';
 import { resetSeenThreads } from '@/lib/bsky';
 import ContentFilterModal from './ContentFilterModal';
+import NotificationsModal from './NotificationsModal';
 
 const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || 'dev';
 const FEED_CACHE_KEY = `dits_feed_cache_${BUILD_ID}`;
@@ -58,6 +60,8 @@ export default function ClientFeed() {
     const [error, setError] = useState<string | null>(null);
 
     const feedRef = useRef<HTMLElement | null>(null);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     // Restore saved session & fetch user avatar
     useEffect(() => {
@@ -68,7 +72,26 @@ export default function ClientFeed() {
         }
         setSessionChecked(true);
     }, []);
+    useEffect(() => {
+        if (!session) {
+            setUnreadCount(0);
+            return;
+        }
 
+        let active = true;
+        const checkUnread = () => {
+            getUnreadNotificationCount(session).then((count) => {
+                if (active) setUnreadCount(count);
+            });
+        };
+
+        checkUnread();
+        const interval = setInterval(checkUnread, 60_000);
+        return () => {
+            active = false;
+            clearInterval(interval);
+        };
+    }, [session]);
     const saveFeedCache = useCallback(
         (currentPosts: DitsPost[], currentCursor?: string, currentScroll = 0) => {
             const payload: CachedFeedState = {
@@ -156,7 +179,7 @@ export default function ClientFeed() {
         return () => {
             cancelled = true;
         };
-    }, [sessionChecked, session, activeTab, selectedFeed.uri, filterVersion, refreshNonce, saveFeedCache ]);
+    }, [sessionChecked, session, activeTab, selectedFeed.uri, filterVersion, refreshNonce, saveFeedCache]);
 
     const loadMore = useCallback(async () => {
         if (loadingMore || !cursor) return;
@@ -267,7 +290,7 @@ export default function ClientFeed() {
         setMyAvatar(undefined);
         setShowMenu(false);
     };
-    
+
 
     return (
         <>
@@ -335,12 +358,12 @@ export default function ClientFeed() {
                         <button
                             type="button"
                             onClick={() => {
-    if (activeTab === 'following') {
-        handleRefreshFeed();
-    } else {
-        setActiveTab('following');
-    }
-}}
+                                if (activeTab === 'following') {
+                                    handleRefreshFeed();
+                                } else {
+                                    setActiveTab('following');
+                                }
+                            }}
                             className={`${styles.tabBtn} ${activeTab === 'following' ? styles.tabBtnActive : ''}`}
                         >
                             Following
@@ -364,6 +387,39 @@ export default function ClientFeed() {
                 )}
 
                 {/* Right Slot: + Compose Button (or Sign In) */}
+                {session && (
+                    <button
+                        type="button"
+                        onClick={() => setShowNotifications(true)}
+                        aria-label="Notifications"
+                        style={{ position: 'relative' }}
+                        className={styles.composeBtn}
+                    >
+                        <Bell size={18} />
+                        {unreadCount > 0 && (
+                            <span
+                                style={{
+                                    position: 'absolute',
+                                    top: '-2px',
+                                    right: '-2px',
+                                    minWidth: '16px',
+                                    height: '16px',
+                                    padding: '0 4px',
+                                    borderRadius: '999px',
+                                    background: '#ef4444',
+                                    color: '#ffffff',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                        )}
+                    </button>
+                )}
                 {session ? (
                     <button
                         type="button"
@@ -378,6 +434,7 @@ export default function ClientFeed() {
                         Sign in
                     </button>
                 )}
+
             </header>
 
             {loading ? (
@@ -453,6 +510,13 @@ export default function ClientFeed() {
                         sessionStorage.removeItem(FEED_CACHE_KEY);
                         setFilterVersion((v) => v + 1);
                     }}
+                />
+            )}
+            {session && showNotifications && (
+                <NotificationsModal
+                    session={session}
+                    onClose={() => setShowNotifications(false)}
+                    onMarkedSeen={() => setUnreadCount(0)}
                 />
             )}
         </>

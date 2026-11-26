@@ -9,7 +9,7 @@ import {
 } from '@atproto/api';
 import { authorizedFetch, BSKY_PDS_HOST, BSKY_PUBLIC_API } from './auth';
 import { markThreadUrisSeen, parseFeedItems } from './parser';
-import { DitsFeedGenerator, DitsSlideItem, DitsQuoteData, DitsExternalLink } from './types';
+import { DitsFeedGenerator, DitsSlideItem, DitsQuoteData, DitsExternalLink, DitsPost } from './types';
 
 const ENDPOINT_AUTHOR_FEED = '/xrpc/app.bsky.feed.getAuthorFeed';
 const ENDPOINT_POST_THREAD = '/xrpc/app.bsky.feed.getPostThread';
@@ -302,4 +302,28 @@ export async function getAuthorThreadSlides(
 
     markThreadUrisSeen(seenChildUris);
     return continuationSlides;
+}
+
+const ENDPOINT_GET_POSTS = '/xrpc/app.bsky.feed.getPosts';
+
+export async function getSinglePost(
+  session: AtpSessionData,
+  postUri: string
+): Promise<DitsPost | null> {
+  const url = new URL(ENDPOINT_GET_POSTS, BSKY_PDS_HOST);
+  url.searchParams.set('uris', postUri);
+
+  const res = await authorizedFetch(
+    url.toString(),
+    { headers: { Accept: 'application/json' } },
+    session
+  );
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as { posts?: AppBskyFeedDefs.PostView[] };
+  const postView = data.posts?.[0];
+  if (!postView) return null;
+
+  const parsed = parseFeedItems([{ post: postView }]);
+  return parsed[0] || null;
 }
