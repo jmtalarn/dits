@@ -1,4 +1,4 @@
-const CACHE_NAME = "dits-shell-v2";
+const CACHE_NAME = "dits-shell-20261126153547";
 const BASE_PATH = "/dits";
 
 const SHELL_ASSETS = [
@@ -32,6 +32,10 @@ self.addEventListener("activate", (event) => {
 
 // Fetch: network-first for HTML/API, stale-while-revalidate for static assets
 self.addEventListener("fetch", (event) => {
+  if (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1") {
+    return;
+  }
+
   const { request } = event;
   if (request.method !== "GET") return;
 

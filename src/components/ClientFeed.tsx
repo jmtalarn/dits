@@ -24,7 +24,8 @@ import FeedPickerModal from './FeedPickerModal';
 import { resetSeenThreads } from '@/lib/bsky';
 import ContentFilterModal from './ContentFilterModal';
 
-const FEED_CACHE_KEY = 'dits_feed_cache_v2';
+const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || 'dev';
+const FEED_CACHE_KEY = `dits_feed_cache_${BUILD_ID}`;
 
 interface CachedFeedState {
     tab: 'following' | 'custom';
@@ -66,7 +67,7 @@ export default function ClientFeed() {
         }
         setSessionChecked(true);
     }, []);
-    
+
     const saveFeedCache = useCallback(
         (currentPosts: DitsPost[], currentCursor?: string, currentScroll = 0) => {
             const payload: CachedFeedState = {
@@ -88,6 +89,12 @@ export default function ClientFeed() {
         let cancelled = false;
 
         async function loadInitial() {
+            // Clean up feed caches from older builds
+            for (const key of Object.keys(sessionStorage)) {
+                if (key.startsWith('dits_feed_cache_') && key !== FEED_CACHE_KEY) {
+                    sessionStorage.removeItem(key);
+                }
+            }
             // Check if we have a cached feed for this exact tab & feedUri
             const rawCache = sessionStorage.getItem(FEED_CACHE_KEY);
             if (rawCache) {
@@ -100,7 +107,7 @@ export default function ClientFeed() {
                     ) {
                         resetSeenThreads();
                         markThreadUrisSeen(cached.posts.map((p) => p.uri));
-                        
+
                         setPosts(cached.posts);
                         setCursor(cached.cursor);
                         setLoading(false);
@@ -174,9 +181,9 @@ export default function ClientFeed() {
             setLoadingMore(false);
         }
     }, [loadingMore, cursor, session, activeTab, selectedFeed.uri]);
-   
 
-   
+
+
     // Trigger loadMore AND save your current scroll position
     const handleFeedScroll = () => {
         const el = feedRef.current;
@@ -187,9 +194,9 @@ export default function ClientFeed() {
 
         // 2. Load next page if within 2 slides of the bottom
         if (!loadingMore && cursor) {
-        if (el.scrollHeight - el.scrollTop - el.clientHeight < el.clientHeight * 2) {
-            loadMore();
-        }
+            if (el.scrollHeight - el.scrollTop - el.clientHeight < el.clientHeight * 2) {
+                loadMore();
+            }
         }
     };
 
