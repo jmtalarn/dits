@@ -13,6 +13,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Dits',
   description: 'A swipe-first, full-screen visual client for Bluesky.',
+  manifest: '/dits/manifest.json',
+  icons: {
+    icon: '/dits/icon-192.png',
+    apple: '/dits/icon-512.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
