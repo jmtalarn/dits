@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Plus, User, LogOut, Shield, RefreshCw, Bell } from 'lucide-react';
+import { Plus, User, LogOut, Shield, Search, Bell } from 'lucide-react';
 import { AtpSessionData } from '@atproto/api';
 import {
     getVisualFeed,
@@ -25,6 +25,7 @@ import FeedPickerModal from './FeedPickerModal';
 import { resetSeenThreads } from '@/lib/bsky';
 import ContentFilterModal from './ContentFilterModal';
 import NotificationsModal from './NotificationsModal';
+import SearchModal from './SearchModal';
 
 const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || 'dev';
 const FEED_CACHE_KEY = `dits_feed_cache_${BUILD_ID}`;
@@ -62,6 +63,7 @@ export default function ClientFeed() {
     const feedRef = useRef<HTMLElement | null>(null);
     const [showNotifications, setShowNotifications] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [showSearch, setShowSearch] = useState(false);
 
     // Restore saved session & fetch user avatar
     useEffect(() => {
@@ -387,6 +389,14 @@ export default function ClientFeed() {
                 )}
 
                 {/* Right Slot: + Compose Button (or Sign In) */}
+                <button
+                    type="button"
+                    onClick={() => setShowSearch(true)}
+                    aria-label="Search"
+                    className={styles.composeBtn}
+                >
+                    <Search size={18} />
+                </button>
                 {session && (
                     <button
                         type="button"
@@ -519,6 +529,7 @@ export default function ClientFeed() {
                     onMarkedSeen={() => setUnreadCount(0)}
                 />
             )}
+            {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
         </>
     );
 }

@@ -1,100 +1,111 @@
-.slide {
-  height: 100dvh;
-  width: 100%;
-  max-width: 460px;
-  margin: 0 auto;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-  position: relative;
-  background-color: #000000;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  /* Keep your existing styles, and ensure top padding clears the Back button */
-  padding-top: calc(64px + env(safe-area-inset-top, 0px));
-  box-sizing: border-box;
+@keyframes fadeIn {
+    0% {
+        opacity: 0
+    }
+
+    to {
+        opacity: 1
+    }
 }
 
-/* Top Stories Progress Bars */
-.progressBars {
-  position: absolute;
-  top: 58px;
-  left: 28px;
-  right: 28px;
+.slide {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
   display: flex;
-  gap: 5px;
-  z-index: 30;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-top: calc(68px + env(safe-area-inset-top, 0px));
+  padding-bottom: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.progressBars {
+    position: absolute;
+    top: 58px;
+    left: 28px;
+    right: 28px;
+    display: flex;
+    gap: 5px;
+    z-index: 30
 }
 
 .progressSegment {
-  flex: 1;
-  height: 2.5px;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 99px;
-  transition: background-color 0.2s ease;
+    flex: 1;
+    height: 2.5px;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    background-color: rgba(255, 255, 255, .2);
+    border-radius: 99px;
+    transition: background-color .2s ease
 }
 
 .progressSegmentActive {
-  background-color: #ffffff;
+    background-color: #fff
 }
 
-/* Floating Navigation & Audio Pills */
-.swipeHint,
+.muteBadge,
 .swipeBackHint,
-.muteBadge {
-  position: absolute;
-  top: 24px;
-  background: rgba(28, 28, 30, 0.78);
-  border: none;
-  color: #f4f4f5;
-  padding: 6px 12px;
-  border-radius: 99px;
-  font-size: 12px;
-  font-weight: 600;
-  z-index: 30;
-  cursor: pointer;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+.swipeHint {
+    position: absolute;
+    background: rgba(28, 28, 30, .78);
+    border: 0;
+    padding: 6px 12px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 30;
+    cursor: pointer;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px)
 }
 
-/* Position swipe pills neatly inside the top corners of the card */
+.muteBadge,
+.swipeBackHint {
+    color: #f4f4f5
+}
+
 .swipeHint {
-  right: 26px;
-  top: 76px;
-  color: #38bdf8;
+    right: 26px;
+    top: 76px;
+    color: #38bdf8
 }
 
 .swipeBackHint {
-  left: 26px;
-  top: 76px;
+    left: 26px;
+    top: 76px
 }
 
 .muteBadge {
-  left: 14px;
-  top: 14px;
+    left: 14px;
+    top: 14px
 }
 
-/* Horizontal Carousel */
 .horizontalCarousel {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: row;
-  height: 100%;
   width: 100%;
-  overflow-x: scroll;
+  overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   user-select: none;
 }
 
-.horizontalCarousel::-webkit-scrollbar {
-  display: none;
+.cardCaptionBody::-webkit-scrollbar,
+.horizontalCarousel::-webkit-scrollbar,
+.textOnlyBody::-webkit-scrollbar {
+    display: none
 }
 
-/* Give the top nav bar clean breathing room above the card */
 .carouselItem {
   flex: 0 0 100%;
   width: 100%;
@@ -103,207 +114,187 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 66px 16px 96px 16px;
+  padding: 6px 16px 10px;
+  box-sizing: border-box;
 }
 
-/* Unified Card Surface */
 .unifiedCard {
-  width: 100%;
-  max-height: 100%;
-  background-color: #111113;
-  border-radius: 22px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+    width: 100%;
+    max-height: 100%;
+    background-color: #111113;
+    border-radius: 22px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-/* Small "Quoted by" Header on Slide 2+ */
 .quotedByHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 18px;
-  background-color: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 12px;
-  color: #a1a1aa;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    background-color: rgba(255, 255, 255, .03);
+    border-bottom: 1px solid rgba(255, 255, 255, .06);
+    font-size: 12px;
+    color: #a1a1aa
 }
 
 .quotedByHeader strong {
-  color: #e4e4e7;
-  font-weight: 600;
+    color: #e4e4e7;
+    font-weight: 600
 }
 
 .quotedByAvatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    object-fit: cover
 }
 
-/* Text-Only Post Body */
 .textOnlyBody {
-  padding: 26px 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
-  scrollbar-width: none;
+    padding: 26px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    scrollbar-width: none
 }
 
-.textOnlyBody::-webkit-scrollbar {
-  display: none;
-}
-
-/* Media Container */
 .cardMediaBox {
-  width: 100%;
-  background-color: #000000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  max-height: 50dvh;
+    width: 100%;
+    background-color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    max-height: 58dvh;
 }
 
 .cardMediaBoxFull {
-  max-height: 68dvh;
-}
-
-.imageElement {
-  width: 100%;
-  height: 100%;
-  max-height: 50dvh;
-  object-fit: cover;
+    max-height: 76dvh;
 }
 
 .cardMediaBoxFull .imageElement {
-  max-height: 68dvh;
-  object-fit: contain;
+    max-height: 76dvh;
+    object-fit: contain;
+
 }
 
 .mediaWrapper {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  cursor: pointer;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer
 }
 
 .videoElement {
-  width: 100%;
-  height: 100%;
-  max-height: 50dvh;
-  object-fit: contain;
+    width: 100%;
+    height: 100%;
+    max-height: 50dvh;
+    object-fit: contain
 }
 
-/* Caption Below Media */
 .cardCaptionBody {
-  padding: 16px 20px 20px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  overflow-y: auto;
-  scrollbar-width: none;
+    padding: 16px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow-y: auto;
+    scrollbar-width: none
 }
 
-.cardCaptionBody::-webkit-scrollbar {
-  display: none;
-}
-
-/* Editorial Typography */
 .textLarge {
-  font-size: 25px;
-  font-weight: 700;
-  line-height: 1.35;
-  color: #fafafa;
-  letter-spacing: -0.02em;
-  word-break: break-word;
+    font-size: 25px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #fafafa;
+    letter-spacing: -.02em;
+    word-break: break-word
 }
 
+.textCompact,
 .textMedium {
-  font-size: 20px;
-  font-weight: 500;
-  line-height: 1.44;
-  color: #f4f4f5;
-  letter-spacing: -0.015em;
-  word-break: break-word;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 1.44;
+    color: #f4f4f5;
+    letter-spacing: -.015em;
+    word-break: break-word
 }
 
 .textCompact {
-  font-size: 18px;
-  font-weight: 400;
-  line-height: 1.48;
-  color: #f4f4f5;
-  letter-spacing: -0.01em;
-  word-break: break-word;
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1.48;
+    letter-spacing: -.01em
 }
 
-/* Slide 1 Quote Teaser Pill */
 .quoteTeaserBox {
-  width: 100%;
-  text-align: left;
-  background-color: #1c1c1f;
-  border: none;
-  border-radius: 14px;
-  padding: 12px 14px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  transition: background-color 0.15s ease;
+    width: 100%;
+    text-align: left;
+    background-color: #1c1c1f;
+    border: 0;
+    border-radius: 14px;
+    padding: 12px 14px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: background-color .15s ease
 }
 
 .quoteTeaserBox:hover {
-  background-color: #27272a;
+    background-color: #27272a
 }
 
 .quoteTeaserHeader {
-  display: flex;
-  align-items: center;
-  gap: 7px;
+    display: flex;
+    align-items: center;
+    gap: 7px
 }
 
 .quoteTeaserAvatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: cover;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    object-fit: cover
 }
 
 .quoteTeaserAuthor {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #d4d4d8;
-  flex: 1;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #d4d4d8;
+    flex: 1
 }
 
 .quoteTeaserAction {
-  font-size: 12px;
-  font-weight: 600;
-  color: #38bdf8;
+    font-size: 12px;
+    font-weight: 600;
+    color: #38bdf8
 }
 
 .quoteTeaserText {
-  font-size: 13px;
-  line-height: 1.4;
-  color: #a1a1aa;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #a1a1aa;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden
 }
 
-/* Unified Big Bottom Footer */
 .bottomFooter {
+  width: 100%;
+  flex-shrink: 0;
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
-  gap: 14px;
-  padding-bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  padding: 6px 68px calc(24px + env(safe-area-inset-bottom, 0px)) 16px; /* 68px right padding prevents author handle from touching floating buttons */
+  box-sizing: border-box;
+  pointer-events: none;
 }
 
 .authorColumn {
@@ -312,341 +303,330 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-bottom: 4px;
+  pointer-events: auto;
 }
 
-
-
 .authorRow {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0
 }
 
 .avatarLarge {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
-  flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, .3);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .45);
+    flex-shrink: 0
 }
 
 .authorMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-  overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden
 }
 
+.authorHandle,
 .authorNameLarge {
-  font-weight: 700;
-  font-size: 18.5px;
-  color: #ffffff;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.75);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    font-weight: 700;
+    font-size: 18.5px;
+    color: #fff;
+    line-height: 1.2;
+    letter-spacing: -.01em;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, .75);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
 }
 
 .authorHandle {
-  font-size: 15px;
-  font-weight: 500;
-  color: #d4d4d8;
-  line-height: 1.2;
-  letter-spacing: 0.015em;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.75);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    font-size: 15px;
+    font-weight: 500;
+    color: #d4d4d8;
+    letter-spacing: .015em
+}
+
+.actionButton,
+.rightActionRail {
+    display: flex;
+    flex-direction: column;
+    align-items: center
 }
 
 .rightActionRail {
-  flex-shrink: 0;
+  position: absolute;
+  right: 12px;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  z-index: 20;
+  pointer-events: auto;
 }
 
 .actionButton {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  color: #ffffff;
-  cursor: pointer;
-  padding: 0;
-  width: 46px;
-  transition: transform 0.15s ease, color 0.15s ease;
+    gap: 4px;
+    background: 0 0;
+    border: 0;
+    color: #fff;
+    cursor: pointer;
+    padding: 0;
+    width: 46px;
+    transition: transform .15s ease, color .15s ease
 }
 
 .actionButton:active {
-  transform: scale(0.95);
+    transform: scale(.95)
 }
 
 .actionIconCircle {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: rgba(18, 18, 22, 0.58);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  transition: background 0.15s ease, border-color 0.15s ease;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: rgba(18, 18, 22, .58);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, .14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .35);
+    transition: background .15s ease, border-color .15s ease
 }
 
 .actionButton:hover .actionIconCircle {
-  background: rgba(34, 34, 40, 0.78);
-  border-color: rgba(255, 255, 255, 0.26);
+    background: rgba(34, 34, 40, .78);
+    border-color: rgba(255, 255, 255, .26)
 }
 
 .actionButtonCopied {
-  color: #10b981;
+    color: #10b981
 }
 
 .actionCount {
-  font-size: 0.7rem;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.01em;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+    font-size: .7rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: .01em;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, .85)
 }
 
-
-/* Make feed images clearly tappable */
 .imageElement {
-  width: 100%;
-  height: 100%;
-  max-height: 50dvh;
-  object-fit: cover;
-  cursor: zoom-in;
+    width: 100%;
+    height: 100%;
+    max-height: 50dvh;
+    object-fit: cover;
+    cursor: zoom-in
 }
 
-/* Fullscreen Lightbox Overlay */
 .lightboxBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background-color: rgba(0, 0, 0, 0.96);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  animation: fadeIn 0.18s ease-out;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background-color: rgba(0, 0, 0, .96);
+    flex-direction: column;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    animation: fadeIn .18s ease-out
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.lightboxBackdrop,
+.lightboxClose,
+.lightboxContent {
+    display: flex;
+    align-items: center;
+    justify-content: center
 }
 
 .lightboxClose {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  z-index: 110;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.14);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    z-index: 110;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 0;
+    background: rgba(255, 255, 255, .14);
+    color: #fff;
+    cursor: pointer;
+    transition: background-color .15s ease
 }
 
 .lightboxClose:hover {
-  background: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, .25)
 }
 
 .lightboxContent {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 56px 12px;
+    width: 100%;
+    height: 100%;
+    padding: 56px 12px
 }
 
 .lightboxImage {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: 8px;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 8px
 }
 
 .lightboxAlt {
-  position: absolute;
-  bottom: 24px;
-  left: 20px;
-  right: 20px;
-  text-align: center;
-  font-size: 13px;
-  color: #a1a1aa;
-  max-width: 600px;
-  margin: 0 auto;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 8px 14px;
-  border-radius: 12px;
+    position: absolute;
+    bottom: 24px;
+    left: 20px;
+    right: 20px;
+    text-align: center;
+    font-size: 13px;
+    color: #a1a1aa;
+    max-width: 600px;
+    margin: 0 auto;
+    background: rgba(0, 0, 0, .7);
+    padding: 8px 14px;
+    border-radius: 12px
 }
+
 .fullscreenVideoBtn {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 30;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(28, 28, 30, 0.78);
-  color: #f4f4f5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  transition: background-color 0.15s ease, transform 0.15s ease;
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 30;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 0;
+    background: rgba(28, 28, 30, .78);
+    color: #f4f4f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: background-color .15s ease, transform .15s ease
 }
 
 .fullscreenVideoBtn:hover {
-  background: rgba(255, 255, 255, 0.22);
-  transform: scale(1.06);
+    background: rgba(255, 255, 255, .22);
+    transform: scale(1.06)
 }
 
 .likedActive {
-  color: #f43f5e !important;
+    color: #f43f5e !important
 }
 
 .repostedActive {
-  color: #10b981 !important;
+    color: #10b981 !important
 }
 
-/* Complete Inline Quote / Reply Card (when screen space permits) */
 .fullInlineContextBox {
-  width: 100%;
-  text-align: left;
-  background-color: #1c1c1f;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 14px 16px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+    width: 100%;
+    text-align: left;
+    background-color: #1c1c1f;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 16px;
+    padding: 14px 16px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: background-color .15s ease, border-color .15s ease
 }
 
+.externalLinkCard:hover,
 .fullInlineContextBox:hover {
-  background-color: #222226;
-  border-color: rgba(56, 189, 248, 0.35);
+    background-color: #222226;
+    border-color: rgba(56, 189, 248, .35)
 }
 
 .fullInlineContextText {
-  font-size: 15px;
-  line-height: 1.45;
-  color: #e4e4e7;
-  word-break: break-word;
+    font-size: 15px;
+    line-height: 1.45;
+    color: #e4e4e7;
+    word-break: break-word
 }
 
 .fullInlineContextImg {
-  width: 100%;
-  max-height: 180px;
-  object-fit: cover;
-  border-radius: 10px;
-  margin-top: 2px;
-}
-/* Rich External Link Preview Card */
-.externalLinkCard {
-  width: 100%;
-  text-decoration: none;
-  background-color: #1c1c1f;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+    width: 100%;
+    max-height: 180px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-top: 2px
 }
 
-.externalLinkCard:hover {
-  background-color: #222226;
-  border-color: rgba(56, 189, 248, 0.35);
+.externalLinkCard {
+    width: 100%;
+    text-decoration: none;
+    background-color: #1c1c1f;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: background-color .15s ease, border-color .15s ease
 }
 
 .externalLinkThumb {
-  width: 100%;
-  max-height: 170px;
-  object-fit: cover;
-  background-color: #09090b;
+    width: 100%;
+    max-height: 170px;
+    object-fit: cover;
+    background-color: #09090b
 }
 
 .externalLinkBody {
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px
 }
 
 .externalLinkDomain {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #38bdf8;
-  display: flex;
-  align-items: center;
-  gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 5px
+}
+
+.externalLinkDesc,
+.externalLinkTitle {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden
 }
 
 .externalLinkTitle {
-  font-size: 14.5px;
-  font-weight: 700;
-  line-height: 1.35;
-  color: #f4f4f5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+    font-size: 14.5px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #f4f4f5
 }
 
 .externalLinkDesc {
-  font-size: 12.5px;
-  line-height: 1.4;
-  color: #a1a1aa;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: #a1a1aa
 }
+
 .repostedBadge {
     display: flex;
     align-items: center;
     gap: 5px;
     margin-bottom: 3px;
-    font-size: 0.75rem;
+    font-size: .75rem;
     line-height: 1.2;
-    color: rgba(255, 255, 255, 0.85);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    color: rgba(255, 255, 255, .85);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .6)
 }
 
 .repostedName {
-    color: #ffffff;
-    font-weight: 700;
+    color: #fff;
+    font-weight: 700
 }

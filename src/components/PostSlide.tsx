@@ -360,7 +360,9 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                         aria-label={copied ? 'Link copied' : 'Share post'}
                         title={copied ? 'Copied!' : 'Share or copy link'}
                     >
+                        <span className={styles.actionIconCircle}>
                         {copied ? <Check size={22} color="#10b981" /> : <Share2 size={22} />}
+                        </span>
                         <span className={styles.actionCount}>{/*copied ? 'Copied' : 'Share'*/}</span>
                     </button>
                 </div>

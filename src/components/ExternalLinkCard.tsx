@@ -2,12 +2,17 @@
 
 import { ExternalLink } from 'lucide-react';
 import { DitsExternalLink } from '@/lib/bsky';
+import { getSafeExternalUrl } from '@/lib/safeUrl';
 import styles from './PostSlide.module.css';
 
 export default function ExternalLinkCard({ link }: { link: DitsExternalLink }) {
+  const safeUrl = getSafeExternalUrl(link.uri);
+
+  if (!safeUrl) return null;
+
   return (
     <a
-      href={link.uri}
+      href={safeUrl}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}

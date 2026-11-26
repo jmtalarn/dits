@@ -125,3 +125,11 @@ export interface DitsNotification {
   };
   recordText?: string;
 }
+
+export interface DitsActorSearchResult {
+  did: string;
+  handle: string;
+  displayName?: string;
+  avatar?: string;
+  description?: string;
+}

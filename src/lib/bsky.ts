@@ -7,3 +7,4 @@ export * from './bsky/actions';
 export * from './bsky/profiles';
 export * from './bsky/filters';
 export * from './bsky/notifications';
+export * from './bsky/search';

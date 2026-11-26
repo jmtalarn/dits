@@ -2,6 +2,7 @@
 
 import { RichText, AppBskyRichtextFacet } from '@atproto/api';
 import styles from './RichTextView.module.css';
+import { getSafeExternalUrl } from '@/lib/safeUrl';
 
 interface RichTextViewProps {
     text: string;
@@ -22,10 +23,16 @@ export default function RichTextView({
         <>
             {Array.from(rt.segments()).map((segment, i) => {
                 if (segment.isLink() && segment.link) {
+                    const safeUrl = getSafeExternalUrl(segment.link.uri);
+
+                    if (!safeUrl) {
+                        return <span key={i}>{segment.text}</span>;
+                    }
+
                     return (
                         <a
                             key={i}
-                            href={segment.link.uri}
+                            href={safeUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
