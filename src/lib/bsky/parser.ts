@@ -415,13 +415,14 @@ function extractContextSlide(
 
 export function parseFeedItems(
     feed: AppBskyFeedDefs.FeedViewPost[],
-    options?: { mode?: 'following' | 'custom' }
+    options?: { mode?: 'following' | 'custom'; ignoreGlobalSeen?: boolean }
 ): DitsPost[] {
   const seenUris = new Set<string>();
   const ditsPosts: DitsPost[] = [];
   const blockedConfig = getNsfwFilterConfig();
   const hideReposts = getHideReposts();   
   const mutedWords = getMutedWords();
+  const ignoreGlobalSeen = Boolean(options?.ignoreGlobalSeen);
 
   for (const item of feed) {
     if (isNsfwItem(item, blockedConfig)) continue;
@@ -457,13 +458,25 @@ export function parseFeedItems(
         : item.post;
 
     // 3. Skip if either the root post or this specific post was already seen
-    if (seenUris.has(rootPost.uri) || globalSeenThreadUris.has(rootPost.uri)) continue;
-    if (seenUris.has(item.post.uri) || globalSeenThreadUris.has(item.post.uri)) continue;
+   if (
+      seenUris.has(rootPost.uri) ||
+      (!ignoreGlobalSeen && globalSeenThreadUris.has(rootPost.uri))
+    ) {
+      continue;
+    }
+    if (
+      seenUris.has(item.post.uri) ||
+      (!ignoreGlobalSeen && globalSeenThreadUris.has(item.post.uri))
+    ) {
+      continue;
+    }
 
     seenUris.add(rootPost.uri);
     seenUris.add(item.post.uri);
-    globalSeenThreadUris.add(rootPost.uri);
-    globalSeenThreadUris.add(item.post.uri);
+    if (!ignoreGlobalSeen) {
+      globalSeenThreadUris.add(rootPost.uri);
+      globalSeenThreadUris.add(item.post.uri);
+    }
 
     const slides = extractPrimarySlides(rootPost);
     const context = rootPost.uri === item.post.uri ? extractContextSlide(item) : null;

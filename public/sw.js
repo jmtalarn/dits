@@ -1,4 +1,4 @@
-const CACHE_NAME = "dits-shell-20261126210256";
+const CACHE_NAME = "dits-shell-20261126220549";
 const BASE_PATH = "/dits";
 
 const SHELL_ASSETS = [
