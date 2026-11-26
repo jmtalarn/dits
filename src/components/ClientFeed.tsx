@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Plus, User, LogOut, Shield } from 'lucide-react';
+import { Plus, User, LogOut, Shield, RefreshCw } from 'lucide-react';
 import { AtpSessionData } from '@atproto/api';
 import {
     getVisualFeed,
@@ -44,6 +44,7 @@ export default function ClientFeed() {
     const [showFeedPicker, setShowFeedPicker] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [filterVersion, setFilterVersion] = useState(0);
+    const [refreshNonce, setRefreshNonce] = useState(0);
 
     const [showLogin, setShowLogin] = useState(false);
     const [showComposer, setShowComposer] = useState(false);
@@ -155,7 +156,7 @@ export default function ClientFeed() {
         return () => {
             cancelled = true;
         };
-    }, [sessionChecked, session, activeTab, selectedFeed.uri, filterVersion, saveFeedCache]);
+    }, [sessionChecked, session, activeTab, selectedFeed.uri, filterVersion, refreshNonce, saveFeedCache ]);
 
     const loadMore = useCallback(async () => {
         if (loadingMore || !cursor) return;
@@ -199,7 +200,14 @@ export default function ClientFeed() {
             }
         }
     };
-
+    const handleRefreshFeed = useCallback(() => {
+        sessionStorage.removeItem(FEED_CACHE_KEY);
+        resetSeenThreads();
+        if (feedRef.current) {
+            feedRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        setRefreshNonce((n) => n + 1);
+    }, []);
     // Desktop Keyboard Navigation (Up/Down between posts, Left/Right within thread slides)
     useEffect(() => {
         const isAnyModalOpen =
@@ -243,19 +251,23 @@ export default function ClientFeed() {
                         detail: { direction: e.key === 'ArrowRight' ? 1 : -1 },
                     })
                 );
+            } else if ((e.key === 'r' || e.key === 'R') && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                handleRefreshFeed();
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [showLogin, showComposer, showFeedPicker, showFilters, showMyProfile]);
-    
+    }, [showLogin, showComposer, showFeedPicker, showFilters, showMyProfile, handleRefreshFeed]);
+
     const handleLogout = () => {
         logoutSession();
         setSession(null);
         setMyAvatar(undefined);
         setShowMenu(false);
     };
+    
 
     return (
         <>
@@ -322,7 +334,13 @@ export default function ClientFeed() {
                     <div className={styles.tabs}>
                         <button
                             type="button"
-                            onClick={() => setActiveTab('following')}
+                            onClick={() => {
+    if (activeTab === 'following') {
+        handleRefreshFeed();
+    } else {
+        setActiveTab('following');
+    }
+}}
                             className={`${styles.tabBtn} ${activeTab === 'following' ? styles.tabBtnActive : ''}`}
                         >
                             Following
