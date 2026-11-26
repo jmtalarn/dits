@@ -273,6 +273,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
 
             {/* Big Bottom Footer: Author on Left, Actions on Right */}
             <div className={styles.bottomFooter}>
+                <div className={styles.authorColumn}>
                 <button
                     type="button"
                     onClick={() => setSelectedActor(activeAuthor.handle)}
@@ -315,16 +316,18 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                         <span className={styles.authorHandle}>@{activeAuthor.handle}</span>
                     </div>
                 </button>
-
-                <div className={styles.actionsRow}>
+                </div>
+                <div className={styles.rightActionRail}>
                     <button
                         type="button"
                         onClick={handleToggleLike}
                         className={`${styles.actionButton} ${likeUri ? styles.likedActive : ''}`}
                         aria-label="Like"
                     >
+                        <span className={styles.actionIconCircle}>
                         <Heart size={20} fill={likeUri ? 'currentColor' : 'none'} />
-                        <span>{likeCount}</span>
+                        </span>
+                        <span className={styles.actionCount}>{likeCount}</span>
                     </button>
 
                     <button
@@ -333,8 +336,10 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                         className={styles.actionButton}
                         aria-label="Comments"
                     >
+                        <span className={styles.actionIconCircle}>
                         <MessageCircle size={20} />
-                        <span>{replyCount}</span>
+                        </span>
+                        <span className={styles.actionCount}>{replyCount}</span>
                     </button>
 
                     <button
@@ -343,18 +348,20 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                         className={`${styles.actionButton} ${repostUri ? styles.repostedActive : ''}`}
                         aria-label="Repost"
                     >
+                        <span className={styles.actionIconCircle}>
                         <Repeat2 size={20} />
-                        <span>{repostCount}</span>
+                        </span>
+                        <span className={styles.actionCount}>{repostCount}</span>
                     </button>
                     <button
                         type="button"
                         onClick={handleShare}
-                        className={styles.actionBtn}
+                        className={`${styles.actionButton} ${copied ? styles.actionButtonCopied : ''}`}
                         aria-label={copied ? 'Link copied' : 'Share post'}
                         title={copied ? 'Copied!' : 'Share or copy link'}
                     >
                         {copied ? <Check size={22} color="#10b981" /> : <Share2 size={22} />}
-                        <span className={styles.actionCount}>{copied ? 'Copied' : 'Share'}</span>
+                        <span className={styles.actionCount}>{/*copied ? 'Copied' : 'Share'*/}</span>
                     </button>
                 </div>
             </div>
