@@ -1,12 +1,14 @@
 'use client';
 
-import { DitsPost, DitsSlideItem, getQuotedThreadSlides, toggleReaction, getSavedSession, getAuthorThreadSlides, } from '@/lib/bsky';
-import { Heart, MessageCircle, Repeat2 } from 'lucide-react';
+import { DitsPost, getBlueskyPostUrl, DitsSlideItem, getQuotedThreadSlides, toggleReaction, getSavedSession, getAuthorThreadSlides, } from '@/lib/bsky';
+import { Heart, Repeat2, MessageCircle, Share2, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import CommentsDrawer from './CommentsDrawer';
 import styles from './PostSlide.module.css';
 import SlideCard from './SlideCard';
 import AuthorProfileModal from './AuthorProfileModal';
+
+
 
 export default function PostSlide({ post }: { post: DitsPost }) {
     const [slides, setSlides] = useState<DitsSlideItem[]>(post.slides);
@@ -19,7 +21,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
     const [repostUri, setRepostUri] = useState<string | undefined>(post.viewerRepostUri);
     const [repostCount, setRepostCount] = useState(post.repostCount);
     const [selectedActor, setSelectedActor] = useState<string | null>(null);
-
+    const [copied, setCopied] = useState(false);
 
     const carouselRef = useRef<HTMLDivElement | null>(null);
     const isDragging = useRef(false);
@@ -176,6 +178,51 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                 handle: post.author.handle,
                 avatar: post.author.avatar,
             };
+    const handleShare = async () => {
+        // Share the active thread slide if viewing a thread continuation, otherwise the root post
+        const currentSlide = slides[activeSlide];
+        const isSelfThreadSlide =
+            currentSlide?.type === 'quote' &&
+            currentSlide.quote?.uri &&
+            currentSlide.quote.authorHandle === post.author.handle;
+
+        const targetUri = isSelfThreadSlide ? currentSlide.quote!.uri : post.uri;
+        const shareUrl = getBlueskyPostUrl(post.author.handle, targetUri);
+        const shareTitle = `${post.author.displayName || post.author.handle} on Bluesky`;
+        const shareText = (isSelfThreadSlide ? currentSlide.quote!.text : post.text).slice(0, 140);
+
+        // 1. Try native Web Share API on mobile / supported browsers
+        if (typeof navigator !== 'undefined' && navigator.share) {
+            try {
+                await navigator.share({
+                    title: shareTitle,
+                    text: shareText || undefined,
+                    url: shareUrl,
+                });
+                return;
+            } catch (err) {
+                // Ignore if user cancelled the share sheet; fall through to clipboard on real errors
+                if ((err as Error)?.name === 'AbortError') return;
+            }
+        }
+
+        // 2. Fallback: copy URL to clipboard and show confirmation badge
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            // Legacy fallback if clipboard API is blocked
+            const input = document.createElement('input');
+            input.value = shareUrl;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
 
     return (
         <article ref={articleRef} className={styles.slide}>
@@ -298,6 +345,16 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                     >
                         <Repeat2 size={20} />
                         <span>{repostCount}</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleShare}
+                        className={styles.actionBtn}
+                        aria-label={copied ? 'Link copied' : 'Share post'}
+                        title={copied ? 'Copied!' : 'Share or copy link'}
+                    >
+                        {copied ? <Check size={22} color="#10b981" /> : <Share2 size={22} />}
+                        <span className={styles.actionCount}>{copied ? 'Copied' : 'Share'}</span>
                     </button>
                 </div>
             </div>

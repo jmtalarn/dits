@@ -327,3 +327,8 @@ export async function getSinglePost(
   const parsed = parseFeedItems([{ post: postView }]);
   return parsed[0] || null;
 }
+
+export function getBlueskyPostUrl(authorHandle: string, postUri: string): string {
+  const rkey = postUri.split('/').pop() || '';
+  return `https://bsky.app{authorHandle}/post/${rkey}`;
+}
