@@ -9,6 +9,7 @@ import {
 } from '@atproto/api';
 import { getNsfwFilterConfig, isNsfwItem } from './moderation';
 import { DitsExternalLink, DitsPost, DitsQuoteData, DitsSlideItem } from './types';
+import { getMutedWords, matchesMutedWords } from '../bsky';
 
 const globalSeenThreadUris = new Set<string>();
 
@@ -218,9 +219,14 @@ export function parseFeedItems(
   const ditsPosts: DitsPost[] = [];
   const blockedConfig = getNsfwFilterConfig();
   const hideReposts = getHideReposts();   
+  const mutedWords = getMutedWords();
 
   for (const item of feed) {
     if (isNsfwItem(item, blockedConfig)) continue;
+    
+    // Check post text against muted words/phrases
+    const itemRecord = item.post.record as { text?: string } | undefined;
+    if (matchesMutedWords(itemRecord?.text, mutedWords)) continue;
     
     const rawReason = item.reason as {
       $type?: string;
@@ -259,10 +265,20 @@ export function parseFeedItems(
 
     const slides = extractPrimarySlides(rootPost);
     const context = rootPost.uri === item.post.uri ? extractContextSlide(item) : null;
+
     if (context) slides.push(context.slide);
     if (slides.length === 0) continue;
 
     const record = rootPost.record as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
+    const externalLink = extractExternalLink(rootPost.embed);
+    if (
+      matchesMutedWords(record.text, mutedWords) ||
+      matchesMutedWords(context?.preview.text, mutedWords) ||
+      matchesMutedWords(externalLink?.title, mutedWords)
+    ) {
+      continue;
+    }
+    
     const hasThreadContinuation = isSelfReply || (rootPost.replyCount || 0) > 0;
     const repostedBy =
         AppBskyFeedDefs.isReasonRepost(item.reason)

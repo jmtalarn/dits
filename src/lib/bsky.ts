@@ -5,3 +5,4 @@ export * from './bsky/parser';
 export * from './bsky/feeds';
 export * from './bsky/actions';
 export * from './bsky/profiles';
+export * from './bsky/filters';
