@@ -202,47 +202,80 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                 <img src={post.author.avatar} alt={post.author.handle} className={styles.quotedByAvatar} />
                             )}
                             <span>
-                                {post.quotePreview?.isReplyContext ? 'In reply to ' : 'Quoted by '}
+                                {slide.quote.authorHandle === post.author.handle
+                                    ? `Thread by `
+                                    : post.quotePreview?.isReplyContext
+                                        ? 'In reply to '
+                                        : 'Quoted by '}
                                 <strong>@{post.author.handle}</strong>
-                                {index > 1 ? ` · Part ${index}` : ''}
+                                {index > 0 && slide.quote.authorHandle === post.author.handle ? ` · Part ${index + 1}` : index > 1 ? ` · Part ${index}` : ''}
                             </span>
                         </div>
 
-                        {slide.quote.image && (
+                        {/* 1. Video inside thread/quote slide */}
+                        {slide.quote.video ? (
                             <div className={`${styles.cardMediaBox} ${!slide.quote.text ? styles.cardMediaBoxFull : ''}`}>
-                                <img
-                                    src={slide.quote.image}
-                                    alt="Quoted media"
-                                    className={styles.imageElement}
-                                    draggable={false}
-                                    onPointerDown={(e) => (pointerStartX.current = e.clientX)}
-                                    onClick={(e) => handleImageClick(slide.quote!.image!, undefined, e.clientX)}
+                                <VideoPlayer
+                                    playlist={slide.quote.video.playlist}
+                                    poster={slide.quote.video.thumbnail}
+                                    onFullscreen={() => setFullscreenMedia({ video: slide.quote!.video })}
                                 />
-                                <button
-                                    type="button"
-                                    aria-label="Expand quoted image"
-                                    className={styles.fullscreenVideoBtn}
-                                    onClick={() => setFullscreenMedia({ imageUrl: slide.quote!.image! })}
-                                >
-                                    <Maximize2 size={16} />
-                                </button>
                             </div>
+                        ) : (
+                            /* 2. Image inside thread/quote slide (only show if not already covered by ExternalLinkCard) */
+                            slide.quote.image &&
+                            !slide.quote.externalLink && (
+                                <div className={`${styles.cardMediaBox} ${!slide.quote.text ? styles.cardMediaBoxFull : ''}`}>
+                                    <img
+                                        src={slide.quote.image}
+                                        alt="Quoted media"
+                                        className={styles.imageElement}
+                                        draggable={false}
+                                        onPointerDown={(e) => (pointerStartX.current = e.clientX)}
+                                        onClick={(e) => handleImageClick(slide.quote!.image!, undefined, e.clientX)}
+                                    />
+                                    <button
+                                        type="button"
+                                        aria-label="Expand quoted image"
+                                        className={styles.fullscreenVideoBtn}
+                                        onClick={() => setFullscreenMedia({ imageUrl: slide.quote!.image! })}
+                                    >
+                                        <Maximize2 size={16} />
+                                    </button>
+                                </div>
+                            )
                         )}
 
-                        {slide.quote.text && (
-                            <div className={slide.quote.image ? styles.cardCaptionBody : styles.textOnlyBody}>
-                                <p className={getTextClass(slide.quote.text, Boolean(slide.quote.image))}>
-                                    <RichTextView
-                                        text={slide.quote.text}
-                                        facets={slide.quote.facets}
-                                        onMentionClick={(did) => setMentionedDid(did)}
-                                        onTagClick={(tag) => setSelectedTag(tag)}
-                                    />
-                                </p>
+                        {/* 3. Text & External Link Card inside thread/quote slide */}
+                        {(slide.quote.text || slide.quote.externalLink) && (
+                            <div
+                                className={
+                                    slide.quote.video || (slide.quote.image && !slide.quote.externalLink)
+                                        ? styles.cardCaptionBody
+                                        : styles.textOnlyBody
+                                }
+                            >
+                                {slide.quote.text && (
+                                    <p
+                                        className={getTextClass(
+                                            slide.quote.text,
+                                            Boolean(slide.quote.video || (slide.quote.image && !slide.quote.externalLink))
+                                        )}
+                                    >
+                                        <RichTextView
+                                            text={slide.quote.text}
+                                            facets={slide.quote.facets}
+                                            onMentionClick={(did) => setMentionedDid(did)}
+                                            onTagClick={(tag) => setSelectedTag(tag)}
+                                        />
+                                    </p>
+                                )}
+                                {slide.quote.externalLink && <ExternalLinkCard link={slide.quote.externalLink} />}
                             </div>
                         )}
                     </>
                 )}
+
             </div>
 
             {fullscreenMedia && (

@@ -9,7 +9,14 @@ export interface DitsQuoteData {
   text: string;
   facets?: AppBskyRichtextFacet.Main[];
   image?: string;
+  video?: {
+    playlist: string;
+    thumbnail?: string;
+    alt?: string;
+    aspectRatio?: { width: number; height: number };
+  };
   isReplyContext?: boolean;
+  externalLink?: DitsExternalLink;
 }
 
 export interface DitsSlideItem {
@@ -17,16 +24,19 @@ export interface DitsSlideItem {
   text?: string;
   facets?: AppBskyRichtextFacet.Main[];
   gifUrl?: string;
-  image?: { fullsize: string; alt: string };
-  video?: { playlist: string; thumbnail?: string };
-  quote?: {
-    authorName: string;
-    authorHandle: string;
-    authorAvatar?: string;
-    text: string;
-    facets?: AppBskyRichtextFacet.Main[];
-    image?: string;
+    image?: {
+    fullsize: string;
+    alt?: string;
+    aspectRatio?: { width: number; height: number };
   };
+
+  video?: {
+    playlist: string;
+    thumbnail?: string;
+    alt?: string;
+    aspectRatio?: { width: number; height: number };
+  };
+  quote?: DitsQuoteData;
 }
 
 export interface DitsExternalLink {

@@ -160,31 +160,27 @@ function buildContextFromRecord(
   const authorName = view.author.displayName || view.author.handle;
   const text = record.text || '';
 
+  const quoteData: DitsQuoteData = {
+    uri: view.uri,
+    cid: view.cid,
+    authorName,
+    authorHandle: view.author.handle,
+    authorAvatar: view.author.avatar,
+    text,
+    facets: record.facets,
+    image,
+    isReplyContext,
+  };
+
   return {
     slide: {
       type: 'quote',
-      quote: {
-        authorName,
-        authorHandle: view.author.handle,
-        authorAvatar: view.author.avatar,
-        text,
-        facets: record.facets,
-        image,
-      },
+      quote: quoteData,
     },
-    preview: {
-      uri: view.uri,
-      cid: view.cid,
-      authorName,
-      authorHandle: view.author.handle,
-      authorAvatar: view.author.avatar,
-      text,
-      facets: record.facets,
-      image,
-      isReplyContext,
-    },
+    preview: quoteData,
   };
 }
+
 
 function extractContextSlide(
   item: AppBskyFeedDefs.FeedViewPost

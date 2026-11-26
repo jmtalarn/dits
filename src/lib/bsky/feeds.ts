@@ -1,7 +1,15 @@
-import { AppBskyEmbedImages, AppBskyFeedDefs, AtpSessionData } from '@atproto/api';
+import {
+    AppBskyFeedDefs,
+    AppBskyEmbedImages,
+    AppBskyEmbedVideo,
+    AppBskyEmbedExternal,
+    AppBskyEmbedRecordWithMedia,
+    AppBskyRichtextFacet,
+    AtpSessionData,
+} from '@atproto/api';
 import { authorizedFetch, BSKY_PDS_HOST, BSKY_PUBLIC_API } from './auth';
 import { markThreadUrisSeen, parseFeedItems } from './parser';
-import { DitsFeedGenerator, DitsSlideItem } from './types';
+import { DitsFeedGenerator, DitsSlideItem, DitsQuoteData, DitsExternalLink } from './types';
 
 const ENDPOINT_AUTHOR_FEED = '/xrpc/app.bsky.feed.getAuthorFeed';
 const ENDPOINT_POST_THREAD = '/xrpc/app.bsky.feed.getPostThread';
@@ -47,7 +55,7 @@ export async function getAuthenticatedFeed(
     return {
         posts: parseFeedItems(data.feed, { mode }),
         cursor: data.cursor,
-        };
+    };
 }
 
 export async function getQuotedThreadSlides(quoteUri: string): Promise<DitsSlideItem[]> {
@@ -69,19 +77,22 @@ export async function getQuotedThreadSlides(quoteUri: string): Promise<DitsSlide
 
     while (currentNode?.post) {
         const post = currentNode.post;
-        const record = post.record as { text?: string };
-        const imageUrl = AppBskyEmbedImages.isView(post.embed)
-            ? post.embed.images.at(0)?.fullsize
-            : undefined;
+        const record = post.record as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
+        const media = extractThreadPostMedia(post.embed);
 
         threadSlides.push({
             type: 'quote',
             quote: {
+                uri: post.uri,
+                cid: post.cid,
                 authorName: post.author.displayName || post.author.handle,
                 authorHandle: post.author.handle,
                 authorAvatar: post.author.avatar,
                 text: record.text || '',
-                image: imageUrl,
+                facets: record.facets,
+                image: media.image,
+                video: media.video,
+                externalLink: media.externalLink,
             },
         });
 
@@ -89,6 +100,7 @@ export async function getQuotedThreadSlides(quoteUri: string): Promise<DitsSlide
             (r: { post?: { author?: { did?: string } } }) => r.post?.author?.did === rootAuthorDid
         );
     }
+
 
     return threadSlides;
 }
@@ -174,6 +186,65 @@ export async function getAvailableFeeds(
     return { saved: savedFeeds, popular: popularFeeds };
 }
 
+function extractThreadPostMedia(embed: AppBskyFeedDefs.PostView['embed']): {
+    image?: string;
+    video?: DitsQuoteData['video'];
+    externalLink?: DitsExternalLink;
+} {
+    if (!embed) return {};
+
+    const mediaEmbed = (
+        AppBskyEmbedRecordWithMedia.isView(embed) ? embed.media : embed
+    ) as { $type?: string };
+
+    // 1. Images
+    if (mediaEmbed.$type === 'app.bsky.embed.images#view') {
+        const view = mediaEmbed as unknown as AppBskyEmbedImages.View;
+        return {
+            image: view.images.at(0)?.fullsize,
+        };
+    }
+
+    // 2. Bluesky Video (HLS playlist + thumbnail)
+    if (mediaEmbed.$type === 'app.bsky.embed.video#view') {
+        const view = mediaEmbed as unknown as AppBskyEmbedVideo.View;
+        return {
+            image: view.thumbnail,
+            video: {
+                playlist: view.playlist,
+                thumbnail: view.thumbnail,
+                alt: view.alt,
+                aspectRatio: view.aspectRatio,
+            },
+        };
+    }
+
+    // 3. External Link Card
+    if (mediaEmbed.$type === 'app.bsky.embed.external#view') {
+        const view = mediaEmbed as unknown as AppBskyEmbedExternal.View;
+        let domain = '';
+        try {
+            domain = new URL(view.external.uri).hostname.replace(/^www\./, '');
+        } catch {
+            domain = view.external.uri;
+        }
+
+        return {
+            image: view.external.thumb,
+            externalLink: {
+                uri: view.external.uri,
+                domain,
+                title: view.external.title,
+                description: view.external.description,
+                thumb: view.external.thumb,
+            },
+        };
+    }
+
+    return {};
+}
+
+
 export async function getAuthorThreadSlides(
     rootUri: string,
     authorDid: string
@@ -196,28 +267,31 @@ export async function getAuthorThreadSlides(
         (r: { post?: { author?: { did?: string } } }) => r.post?.author?.did === authorDid
     );
 
-  const visitedUris = new Set<string>([rootUri]);
-  const seenChildUris: string[] = [rootUri];
+    const visitedUris = new Set<string>([rootUri]);
+    const seenChildUris: string[] = [rootUri];
 
     while (currentNode?.post) {
         const p = currentNode.post;
         if (visitedUris.has(p.uri)) break;
         visitedUris.add(p.uri);
         seenChildUris.push(p.uri);
-        const record = p.record as { text?: string; facets?: any[] };
-        const imageUrl = AppBskyEmbedImages.isView(p.embed)
-            ? p.embed.images.at(0)?.fullsize
-            : undefined;
+
+        const record = p.record as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
+        const media = extractThreadPostMedia(p.embed);
 
         continuationSlides.push({
             type: 'quote',
             quote: {
+                uri: p.uri,
+                cid: p.cid,
                 authorName: p.author.displayName || p.author.handle,
                 authorHandle: p.author.handle,
                 authorAvatar: p.author.avatar,
                 text: record.text || '',
                 facets: record.facets,
-                image: imageUrl,
+                image: media.image,
+                video: media.video,
+                externalLink: media.externalLink,
             },
         });
 
