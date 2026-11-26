@@ -200,6 +200,56 @@ export default function ClientFeed() {
         }
     };
 
+    // Desktop Keyboard Navigation (Up/Down between posts, Left/Right within thread slides)
+    useEffect(() => {
+        const isAnyModalOpen =
+            showLogin ||
+            showComposer ||
+            showFeedPicker ||
+            showFilters ||
+            showMyProfile;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (isAnyModalOpen) return;
+
+            // Ignore when typing in inputs, textareas, or contentEditable elements
+            const target = e.target as HTMLElement | null;
+            if (
+                target &&
+                (target.tagName === 'INPUT' ||
+                    target.tagName === 'TEXTAREA' ||
+                    target.isContentEditable)
+            ) {
+                return;
+            }
+
+            const feedEl = feedRef.current;
+            if (!feedEl) return;
+
+            if (e.key === 'ArrowDown' || e.key === 'j') {
+                e.preventDefault();
+                const step = feedEl.clientHeight;
+                const nextTop = Math.round(feedEl.scrollTop / step) * step + step;
+                feedEl.scrollTo({ top: nextTop, behavior: 'smooth' });
+            } else if (e.key === 'ArrowUp' || e.key === 'k') {
+                e.preventDefault();
+                const step = feedEl.clientHeight;
+                const prevTop = Math.max(0, Math.round(feedEl.scrollTop / step) * step - step);
+                feedEl.scrollTo({ top: prevTop, behavior: 'smooth' });
+            } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                e.preventDefault();
+                window.dispatchEvent(
+                    new CustomEvent('dits:horizontal-nav', {
+                        detail: { direction: e.key === 'ArrowRight' ? 1 : -1 },
+                    })
+                );
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [showLogin, showComposer, showFeedPicker, showFilters, showMyProfile]);
+    
     const handleLogout = () => {
         logoutSession();
         setSession(null);

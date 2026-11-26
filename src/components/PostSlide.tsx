@@ -25,6 +25,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
     const isDragging = useRef(false);
     const startX = useRef(0);
     const scrollLeftStart = useRef(0);
+    const articleRef = useRef<HTMLElement | null>(null);
 
     // 1. Automatically fetch author's own thread continuation (Posts 2, 3, 4...)
     useEffect(() => {
@@ -59,6 +60,32 @@ export default function PostSlide({ post }: { post: DitsPost }) {
         }
     }, [activeSlide, post.quotePreview?.uri, post.quotePreview?.isReplyContext, threadLoaded]);
 
+    useEffect(() => {
+        if (slides.length <= 1) return;
+
+        const handleHorizontalNav = (e: Event) => {
+            // Do not hijack arrow keys if comments drawer or author profile modal is open
+            if (showComments || selectedActor) return;
+
+            const el = articleRef.current;
+            if (!el) return;
+
+            // Check if this post is the one currently snapped in the viewport
+            const rect = el.getBoundingClientRect();
+            const isVisible = Math.abs(rect.top) < rect.height * 0.4;
+            if (!isVisible) return;
+
+            const customEvent = e as CustomEvent<{ direction: 1 | -1 }>;
+            const nextIndex = activeSlide + customEvent.detail.direction;
+
+            if (nextIndex >= 0 && nextIndex < slides.length) {
+                goToSlide(nextIndex);
+            }
+        };
+
+        window.addEventListener('dits:horizontal-nav', handleHorizontalNav);
+        return () => window.removeEventListener('dits:horizontal-nav', handleHorizontalNav);
+    }, [slides.length, activeSlide, showComments, selectedActor]);
 
     const handleScroll = () => {
         if (!carouselRef.current) return;
@@ -151,7 +178,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
             };
 
     return (
-        <article className={styles.slide}>
+        <article ref={articleRef} className={styles.slide}>
             {slides.length > 1 && (
                 <div className={styles.progressBars}>
                     {slides.map((_, idx) => (
