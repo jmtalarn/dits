@@ -1,6 +1,6 @@
 'use client';
 
-import { DitsPost, DitsSlideItem, getQuotedThreadSlides, toggleReaction, getSavedSession } from '@/lib/bsky';
+import { DitsPost, DitsSlideItem, getQuotedThreadSlides, toggleReaction, getSavedSession, getAuthorThreadSlides, } from '@/lib/bsky';
 import { Heart, MessageCircle, Repeat2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import CommentsDrawer from './CommentsDrawer';
@@ -26,8 +26,30 @@ export default function PostSlide({ post }: { post: DitsPost }) {
     const startX = useRef(0);
     const scrollLeftStart = useRef(0);
 
+    // 1. Automatically fetch author's own thread continuation (Posts 2, 3, 4...)
     useEffect(() => {
-        if (activeSlide === 1 && post.quotePreview?.uri && !threadLoaded) {
+        if (!post.threadRootUri || threadLoaded) return;
+        setThreadLoaded(true);
+
+        getAuthorThreadSlides(post.threadRootUri, post.author.did).then((extraSlides) => {
+            if (extraSlides.length > 0) {
+                setSlides((prev) => {
+                    // Guard against React Strict Mode double-mount or duplicate fetches
+                    const existingTexts = new Set(
+                        prev.map((s) => (s.type === 'quote' ? s.quote?.text : post.text))
+                    );
+                    const uniqueExtra = extraSlides.filter(
+                        (s) => s.quote?.text && !existingTexts.has(s.quote.text)
+                    );
+                    return [...prev, ...uniqueExtra];
+                });
+            }
+        });
+    }, [post.threadRootUri, post.author.did, post.text, threadLoaded]);
+
+    // 2. Fetch quoted thread when swiping into a quoted post
+    useEffect(() => {
+        if (activeSlide === 1 && post.quotePreview?.uri && !post.quotePreview.isReplyContext && !threadLoaded) {
             setThreadLoaded(true);
             getQuotedThreadSlides(post.quotePreview.uri).then((threadSlides) => {
                 if (threadSlides.length > 1) {
@@ -35,7 +57,8 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                 }
             });
         }
-    }, [activeSlide, post.quotePreview?.uri, threadLoaded]);
+    }, [activeSlide, post.quotePreview?.uri, post.quotePreview?.isReplyContext, threadLoaded]);
+
 
     const handleScroll = () => {
         if (!carouselRef.current) return;
@@ -144,7 +167,11 @@ export default function PostSlide({ post }: { post: DitsPost }) {
 
             {slides.length > 1 && activeSlide < slides.length - 1 && (
                 <button type="button" onClick={() => goToSlide(activeSlide + 1)} className={styles.swipeHint}>
-                    {slides.at(activeSlide + 1)?.type === 'quote' ? 'See quote →' : `${activeSlide + 1}/${slides.length} →`}
+                    {slides.at(activeSlide + 1)?.quote?.authorHandle === post.author.handle
+                        ? `Thread ${activeSlide + 1}/${slides.length} →`
+                        : slides.at(activeSlide + 1)?.type === 'quote'
+                            ? 'See quote →'
+                            : `${activeSlide + 1}/${slides.length} →`}
                 </button>
             )}
 
@@ -181,7 +208,35 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                     {activeAuthor.avatar && (
                         <img src={activeAuthor.avatar} alt={activeAuthor.handle} className={styles.avatarLarge} />
                     )}
+
                     <div className={styles.authorMeta}>
+                        {post.repostedBy && (
+                            <div className={styles.repostedBadge}>
+                                <Repeat2 size={13} />
+                                <span>
+                                    Reposted by{' '}
+                                    <span
+                                        role="button"
+                                        tabIndex={0}
+                                        className={styles.repostedName}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedActor(post.repostedBy!.handle);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setSelectedActor(post.repostedBy!.handle);
+                                            }
+                                        }}
+                                    >
+                                        {post.repostedBy.displayName || `@${post.repostedBy.handle}`}
+                                    </span>
+                                </span>
+                            </div>
+                        )}
+
                         <span className={styles.authorNameLarge}>{activeAuthor.name}</span>
                         <span className={styles.authorHandle}>@{activeAuthor.handle}</span>
                     </div>

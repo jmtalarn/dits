@@ -8,6 +8,8 @@ import {
   NsfwFilterConfig,
   getNsfwFilterConfig,
   setNsfwFilterConfig,
+  getHideReposts,
+  setHideReposts,
 } from '@/lib/bsky';
 import styles from './ContentFilterModal.module.css';
 
@@ -17,6 +19,7 @@ interface ContentFilterModalProps {
 
 export default function ContentFilterModal({ onClose }: ContentFilterModalProps) {
   const [config, setConfig] = useState<NsfwFilterConfig>(() => getNsfwFilterConfig());
+  const [hideReposts, setHideRepostsState] = useState<boolean>(() => getHideReposts());
 
   const handleToggle = (id: NsfwLabel) => {
     const updated: NsfwFilterConfig = {
@@ -25,6 +28,12 @@ export default function ContentFilterModal({ onClose }: ContentFilterModalProps)
     };
     setConfig(updated);
     setNsfwFilterConfig(updated);
+  };
+
+  const handleToggleReposts = () => {
+    const next = !hideReposts;
+    setHideRepostsState(next);
+    setHideReposts(next);
   };
 
   return (
@@ -38,7 +47,7 @@ export default function ContentFilterModal({ onClose }: ContentFilterModalProps)
         </div>
 
         <p className={styles.subtitle}>
-          Choose which Bluesky sensitivity labels are hidden from your feeds.
+          Choose which Bluesky sensitivity labels and post types are hidden from your feeds.
         </p>
 
         <div className={styles.list}>
@@ -60,6 +69,22 @@ export default function ContentFilterModal({ onClose }: ContentFilterModalProps)
               </div>
             );
           })}
+
+          <div className={styles.row}>
+            <div className={styles.rowMeta}>
+              <span className={styles.rowTitle}>Reposts in Following</span>
+              <span className={styles.rowDesc}>
+                Hide reposts from people you follow to see only original posts.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleReposts}
+              className={hideReposts ? styles.toggleBtn : styles.toggleBtnOff}
+            >
+              {hideReposts ? 'Hidden' : 'Shown'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

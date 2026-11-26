@@ -1,0 +1,15 @@
+"use client";
+
+import { useEffect } from "react";
+
+export function ServiceWorkerRegister() {
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/dits/sw.js", { scope: "/dits/" })
+        .catch((err) => console.error("SW registration failed:", err));
+    }
+  }, []);
+
+  return null;
+}

@@ -12,6 +12,7 @@ import {
     DEFAULT_DISCOVER_FEED,
     DitsFeedGenerator,
     DitsPost,
+    markThreadUrisSeen,
 } from '@/lib/bsky';
 import PostSlide from './PostSlide';
 import LoginModal from './LoginModal';
@@ -20,10 +21,10 @@ import AuthorProfileModal from './AuthorProfileModal';
 import { DitsFullLoader, DitsMiniSpinner } from './DitsLoader';
 import styles from './FeedContainer.module.css';
 import FeedPickerModal from './FeedPickerModal';
-
+import { resetSeenThreads } from '@/lib/bsky';
 import ContentFilterModal from './ContentFilterModal';
 
-const FEED_CACHE_KEY = 'dits_feed_cache_v1';
+const FEED_CACHE_KEY = 'dits_feed_cache_v2';
 
 interface CachedFeedState {
     tab: 'following' | 'custom';
@@ -35,6 +36,7 @@ interface CachedFeedState {
 
 export default function ClientFeed() {
     const [session, setSession] = useState<AtpSessionData | null>(null);
+    const [sessionChecked, setSessionChecked] = useState(false);
     const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);
     const [activeTab, setActiveTab] = useState<'following' | 'custom'>('following');
     const [selectedFeed, setSelectedFeed] = useState<DitsFeedGenerator>(DEFAULT_DISCOVER_FEED);
@@ -62,10 +64,29 @@ export default function ClientFeed() {
             setSession(saved);
             getMyAvatar(saved).then(setMyAvatar);
         }
+        setSessionChecked(true);
     }, []);
+    
+    const saveFeedCache = useCallback(
+        (currentPosts: DitsPost[], currentCursor?: string, currentScroll = 0) => {
+            const payload: CachedFeedState = {
+                tab: activeTab,
+                feedUri: selectedFeed.uri,
+                posts: currentPosts.slice(0, 60),
+                cursor: currentCursor,
+                scrollTop: currentScroll,
+            };
+            sessionStorage.setItem(FEED_CACHE_KEY, JSON.stringify(payload));
+        },
+        [activeTab, selectedFeed.uri]
+    );
 
     // Load feed whenever session or active tab changes
     useEffect(() => {
+        if (!sessionChecked) return;
+
+        let cancelled = false;
+
         async function loadInitial() {
             // Check if we have a cached feed for this exact tab & feedUri
             const rawCache = sessionStorage.getItem(FEED_CACHE_KEY);
@@ -77,6 +98,9 @@ export default function ClientFeed() {
                         cached.feedUri === selectedFeed.uri &&
                         cached.posts.length > 0
                     ) {
+                        resetSeenThreads();
+                        markThreadUrisSeen(cached.posts.map((p) => p.uri));
+                        
                         setPosts(cached.posts);
                         setCursor(cached.cursor);
                         setLoading(false);
@@ -93,8 +117,8 @@ export default function ClientFeed() {
                     // Ignore malformed cache and fetch fresh
                 }
             }
-
             // Otherwise fetch fresh posts from Bluesky
+            resetSeenThreads();
             setLoading(true);
             setError(null);
             setCursor(undefined);
@@ -104,18 +128,27 @@ export default function ClientFeed() {
                     ? await getAuthenticatedFeed(session, activeTab, selectedFeed.uri)
                     : await getVisualFeed();
 
-                setPosts(data.posts);
-                setCursor(data.cursor);
-                saveFeedCache(data.posts, data.cursor, 0)
+                if (!cancelled) {
+                    setPosts(data.posts);
+                    setCursor(data.cursor);
+                    saveFeedCache(data.posts, data.cursor, 0);
+                }
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'Error loading feed');
+                if (!cancelled) {
+                    setError(err instanceof Error ? err.message : 'Error loading feed');
+                }
             } finally {
-                setLoading(false);
+                if (!cancelled) {
+                    setLoading(false);
+                }
             }
         }
 
         loadInitial();
-    }, [session, activeTab, selectedFeed.uri, filterVersion]);
+        return () => {
+            cancelled = true;
+        };
+    }, [sessionChecked, session, activeTab, selectedFeed.uri, filterVersion, saveFeedCache]);
 
     const loadMore = useCallback(async () => {
         if (loadingMore || !cursor) return;
@@ -123,14 +156,16 @@ export default function ClientFeed() {
 
         try {
             const data = session
-                ? await getAuthenticatedFeed(session, activeTab, selectedFeed.uri)
-                : await getVisualFeed();
+                ? await getAuthenticatedFeed(session, activeTab, selectedFeed.uri, cursor)
+                : await getVisualFeed(cursor);
 
 
             setPosts((prev) => {
                 const existingUris = new Set(prev.map((p) => p.uri));
                 const uniqueNewPosts = data.posts.filter((p) => !existingUris.has(p.uri));
-                return [...prev, ...uniqueNewPosts];
+                const updated = [...prev, ...uniqueNewPosts];
+                saveFeedCache(updated, data.cursor, feedRef.current?.scrollTop || 0);
+                return updated;
             });
             setCursor(data.cursor);
         } catch {
@@ -140,19 +175,7 @@ export default function ClientFeed() {
         }
     }, [loadingMore, cursor, session, activeTab, selectedFeed.uri]);
    
-    const saveFeedCache = useCallback(
-        (currentPosts: DitsPost[], currentCursor?: string, currentScroll = 0) => {
-            const payload: CachedFeedState = {
-                tab: activeTab,
-                feedUri: selectedFeed.uri,
-                posts: currentPosts.slice(0, 60),
-                cursor: currentCursor,
-                scrollTop: currentScroll,
-            };
-            sessionStorage.setItem(FEED_CACHE_KEY, JSON.stringify(payload));
-        },
-        [activeTab, selectedFeed.uri]
-    );
+
    
     // Trigger loadMore AND save your current scroll position
     const handleFeedScroll = () => {
@@ -352,6 +375,7 @@ export default function ClientFeed() {
                 <ContentFilterModal
                     onClose={() => {
                         setShowFilters(false);
+                        sessionStorage.removeItem(FEED_CACHE_KEY);
                         setFilterVersion((v) => v + 1);
                     }}
                 />

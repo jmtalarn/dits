@@ -10,6 +10,30 @@ import {
 import { getNsfwFilterConfig, isNsfwItem } from './moderation';
 import { DitsExternalLink, DitsPost, DitsQuoteData, DitsSlideItem } from './types';
 
+const globalSeenThreadUris = new Set<string>();
+
+export function resetSeenThreads(): void {
+  globalSeenThreadUris.clear();
+}
+
+export function markThreadUrisSeen(uris: string[]): void {
+  for (const uri of uris) {
+    globalSeenThreadUris.add(uri);
+  }
+}
+
+const HIDE_REPOSTS_KEY = 'dits_hide_reposts_v1';
+
+export function getHideReposts(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(HIDE_REPOSTS_KEY) === 'true';
+}
+
+export function setHideReposts(hide: boolean): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(HIDE_REPOSTS_KEY, String(hide));
+}
+
 function extractGifSlide(embed: unknown): DitsSlideItem | null {
   if (!AppBskyEmbedExternal.isView(embed)) return null;
   const view = embed as AppBskyEmbedExternal.View;
@@ -176,52 +200,104 @@ function extractContextSlide(
       return buildContextFromRecord(rwm.record.record, false);
     }
   }
-  if (item.reply && AppBskyFeedDefs.isPostView(item.reply.parent)) {
+
+  // Only treat as "Replying to @user" if replying to SOMEONE ELSE (not a self-thread)
+  if (
+    item.reply &&
+    AppBskyFeedDefs.isPostView(item.reply.parent) &&
+    item.reply.parent.author.did !== item.post.author.did
+  ) {
     return buildContextFromRecord(item.reply.parent, true);
   }
 
   return null;
 }
 
-export function parseFeedItems(feed: AppBskyFeedDefs.FeedViewPost[]): DitsPost[] {
+
+export function parseFeedItems(
+    feed: AppBskyFeedDefs.FeedViewPost[],
+    options?: { mode?: 'following' | 'custom' }
+): DitsPost[] {
   const seenUris = new Set<string>();
   const ditsPosts: DitsPost[] = [];
   const blockedConfig = getNsfwFilterConfig();
+  const hideReposts = getHideReposts();   
 
   for (const item of feed) {
     if (isNsfwItem(item, blockedConfig)) continue;
+    
+    const rawReason = item.reason as {
+      $type?: string;
+      by?: { handle?: string; displayName?: string };
+    } | undefined;
 
-    const post = item.post;
-    if (seenUris.has(post.uri)) continue;
-    seenUris.add(post.uri);
+    const isRepost = Boolean(rawReason?.by?.handle);
 
-    const slides = extractPrimarySlides(post);
-    const context = extractContextSlide(item);
+    // Skip reposts in Following feed when enabled
+    if (hideReposts && options?.mode === 'following' && isRepost) {
+      continue;
+    }
+    // 1. Check if this feed item is a continuation of the author's own self-thread
+    const isSelfReply =
+      item.reply &&
+      AppBskyFeedDefs.isPostView(item.reply.parent) &&
+      item.reply.parent.author.did === item.post.author.did;
+
+    // 2. Only promote reply.root if the root was ALSO written by the same author
+    const rootPost =
+      isSelfReply &&
+      item.reply &&
+      AppBskyFeedDefs.isPostView(item.reply.root) &&
+      item.reply.root.author.did === item.post.author.did
+        ? item.reply.root
+        : item.post;
+
+    // 3. Skip if either the root post or this specific post was already seen
+    if (seenUris.has(rootPost.uri) || globalSeenThreadUris.has(rootPost.uri)) continue;
+    if (seenUris.has(item.post.uri) || globalSeenThreadUris.has(item.post.uri)) continue;
+
+    seenUris.add(rootPost.uri);
+    seenUris.add(item.post.uri);
+    globalSeenThreadUris.add(rootPost.uri);
+    globalSeenThreadUris.add(item.post.uri);
+
+    const slides = extractPrimarySlides(rootPost);
+    const context = rootPost.uri === item.post.uri ? extractContextSlide(item) : null;
     if (context) slides.push(context.slide);
     if (slides.length === 0) continue;
 
-    const record = post.record as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
+    const record = rootPost.record as { text?: string; facets?: AppBskyRichtextFacet.Main[] };
+    const hasThreadContinuation = isSelfReply || (rootPost.replyCount || 0) > 0;
+    const repostedBy =
+        AppBskyFeedDefs.isReasonRepost(item.reason)
+            ? {
+                handle: item.reason.by.handle,
+                displayName: item.reason.by.displayName,
+            }
+            : undefined;
 
     ditsPosts.push({
-      uri: post.uri,
-      cid: post.cid,
+      uri: rootPost.uri,
+      cid: rootPost.cid,
       author: {
-        did: post.author.did,
-        handle: post.author.handle,
-        displayName: post.author.displayName,
-        avatar: post.author.avatar,
+        did: rootPost.author.did,
+        handle: rootPost.author.handle,
+        displayName: rootPost.author.displayName,
+        avatar: rootPost.author.avatar,
       },
       text: record.text || '',
       facets: record.facets,
-      indexedAt: post.indexedAt,
-      likeCount: post.likeCount || 0,
-      replyCount: post.replyCount || 0,
-      repostCount: post.repostCount || 0,
-      viewerLikeUri: post.viewer?.like,
-      viewerRepostUri: post.viewer?.repost,
+      indexedAt: rootPost.indexedAt,
+      likeCount: rootPost.likeCount || 0,
+      replyCount: rootPost.replyCount || 0,
+      repostCount: rootPost.repostCount || 0,
+      viewerLikeUri: rootPost.viewer?.like,
+      viewerRepostUri: rootPost.viewer?.repost,
       slides,
       quotePreview: context?.preview,
-      externalLink: extractExternalLink(post.embed),
+      externalLink: extractExternalLink(rootPost.embed),
+      threadRootUri: hasThreadContinuation ? rootPost.uri : undefined, 
+      repostedBy: repostedBy,
     });
   }
 

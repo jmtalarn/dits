@@ -57,6 +57,11 @@ export interface DitsPost {
   slides: DitsSlideItem[];
   quotePreview?: DitsQuoteData;
   externalLink?: DitsExternalLink;
+  threadRootUri?: string;
+  repostedBy?: {
+    handle: string;
+    displayName?: string;
+  };
 }
 
 export interface DitsComment {

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 
@@ -32,6 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ca">
+      <ServiceWorkerRegister />
       <body suppressHydrationWarning={true}>{children}</body>
     </html>
   );
