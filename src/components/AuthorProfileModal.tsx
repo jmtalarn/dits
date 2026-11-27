@@ -12,6 +12,7 @@ import {
 import PostSlide from './PostSlide';
 import { DitsMiniSpinner } from './DitsLoader';
 import styles from './AuthorProfileModal.module.css';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface AuthorProfileModalProps {
     actor: string;
@@ -19,6 +20,7 @@ interface AuthorProfileModalProps {
 }
 
 export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModalProps) {
+    const { t } = useI18n();
     const [profile, setProfile] = useState<DitsProfile | null>(null);
     const [posts, setPosts] = useState<DitsPost[]>([]);
     const [loading, setLoading] = useState(true);
@@ -68,7 +70,7 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
     }, [selectedPostIndex]);
 
     const handleToggleFollow = async () => {
-        if (!session || !profile) return alert('Sign in to follow creators');
+        if (!session || !profile) return alert(t('authorProfile.signInToFollow'));
 
         const prevUri = followUri;
         const prevCount = followersCount;
@@ -93,7 +95,7 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
     return (
         <div className={styles.backdrop} onClick={onClose}>
             <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
-                <button type="button" onClick={onClose} className={styles.closeBtn} aria-label="Close">
+                <button type="button" onClick={onClose} className={styles.closeBtn} aria-label={t('common.close')}>
                     <X size={18} />
                 </button>
 
@@ -118,7 +120,7 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
                                     onClick={handleToggleFollow}
                                     className={followUri ? styles.followingBtn : styles.followBtn}
                                 >
-                                    {followUri ? 'Following' : 'Follow'}
+                                    {followUri ? t('authorProfile.following') : t('authorProfile.follow')}
                                 </button>
                             )}
                         </div>
@@ -130,13 +132,13 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
 
                             <div className={styles.statsRow}>
                                 <span>
-                                    <strong>{followersCount.toLocaleString()}</strong> Followers
+                                    <strong>{followersCount.toLocaleString()}</strong> {t('authorProfile.followers')}
                                 </span>
                                 <span>
-                                    <strong>{profile.followsCount.toLocaleString()}</strong> Following
+                                    <strong>{profile.followsCount.toLocaleString()}</strong> {t('authorProfile.followingCount')}
                                 </span>
                                 <span>
-                                    <strong>{profile.postsCount.toLocaleString()}</strong> Posts
+                                    <strong>{profile.postsCount.toLocaleString()}</strong> {t('authorProfile.posts')}
                                 </span>
                             </div>
                         </div>
@@ -170,7 +172,7 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
                                         )}
                                         {!isImage && !isVideo && (
                                             <div className={styles.gridTextCard}>
-                                                <p>{p.text || firstSlide?.quote?.text || 'Post'}</p>
+                                                <p>{p.text || firstSlide?.quote?.text || t('common.post')}</p>
                                             </div>
                                         )}
                                     </button>
@@ -189,7 +191,7 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
                             type="button"
                             onClick={() => setSelectedPostIndex(null)}
                             className={styles.authorFeedBackBtn}
-                            aria-label="Back to profile"
+                            aria-label={t('authorProfile.backToProfile')}
                         >
                             <ArrowLeft size={18} />
                         </button>
@@ -198,7 +200,7 @@ export default function AuthorProfileModal({ actor, onClose }: AuthorProfileModa
                             type="button"
                             onClick={onClose}
                             className={styles.authorFeedBackBtn}
-                            aria-label="Close profile"
+                            aria-label={t('authorProfile.closeProfile')}
                         >
                             <X size={18} />
                         </button>

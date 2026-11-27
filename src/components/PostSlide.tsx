@@ -7,10 +7,12 @@ import CommentsDrawer from './CommentsDrawer';
 import styles from './PostSlide.module.css';
 import SlideCard from './SlideCard';
 import AuthorProfileModal from './AuthorProfileModal';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 
 
 export default function PostSlide({ post }: { post: DitsPost }) {
+    const { t } = useI18n();
     const [slides, setSlides] = useState<DitsSlideItem[]>(post.slides);
     const [activeSlide, setActiveSlide] = useState(0);
     const [threadLoaded, setThreadLoaded] = useState(false);
@@ -115,7 +117,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
     };
     const handleToggleLike = async () => {
         const session = getSavedSession();
-        if (!session) return alert('Sign in to like posts');
+        if (!session) return alert(t('postSlide.signInToLike'));
 
         const prevUri = likeUri;
         const prevCount = likeCount;
@@ -141,7 +143,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
 
     const handleToggleRepost = async () => {
         const session = getSavedSession();
-        if (!session) return alert('Sign in to repost');
+        if (!session) return alert(t('postSlide.signInToRepost'));
 
         const prevUri = repostUri;
         const prevCount = repostCount;
@@ -242,16 +244,16 @@ export default function PostSlide({ post }: { post: DitsPost }) {
             {slides.length > 1 && activeSlide < slides.length - 1 && (
                 <button type="button" onClick={() => goToSlide(activeSlide + 1)} className={styles.swipeHint}>
                     {slides.at(activeSlide + 1)?.quote?.authorHandle === post.author.handle
-                        ? `Thread ${activeSlide + 1}/${slides.length} →`
+                        ? t('postSlide.threadProgress', { current: activeSlide + 1, total: slides.length })
                         : slides.at(activeSlide + 1)?.type === 'quote'
-                            ? 'See quote →'
-                            : `${activeSlide + 1}/${slides.length} →`}
+                            ? t('postSlide.seeQuote')
+                            : t('postSlide.progress', { current: activeSlide + 1, total: slides.length })}
                 </button>
             )}
 
             {slides.length > 1 && activeSlide > 0 && (
                 <button type="button" onClick={() => goToSlide(activeSlide - 1)} className={styles.swipeBackHint}>
-                    ← Back
+                    {t('postSlide.back')}
                 </button>
             )}
 
@@ -289,7 +291,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                             <div className={styles.repostedBadge}>
                                 <Repeat2 size={13} />
                                 <span>
-                                    Reposted by{' '}
+                                    {t('postSlide.repostedBy')}{' '}
                                     <span
                                         role="button"
                                         tabIndex={0}
@@ -322,7 +324,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                         type="button"
                         onClick={handleToggleLike}
                         className={`${styles.actionButton} ${likeUri ? styles.likedActive : ''}`}
-                        aria-label="Like"
+                        aria-label={t('common.like')}
                     >
                         <span className={styles.actionIconCircle}>
                         <Heart size={20} fill={likeUri ? 'currentColor' : 'none'} />
@@ -334,7 +336,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                         type="button"
                         onClick={() => setShowComments(true)}
                         className={styles.actionButton}
-                        aria-label="Comments"
+                        aria-label={t('common.comments')}
                     >
                         <span className={styles.actionIconCircle}>
                         <MessageCircle size={20} />
@@ -346,7 +348,7 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                         type="button"
                         onClick={handleToggleRepost}
                         className={`${styles.actionButton} ${repostUri ? styles.repostedActive : ''}`}
-                        aria-label="Repost"
+                        aria-label={t('common.repost')}
                     >
                         <span className={styles.actionIconCircle}>
                         <Repeat2 size={20} />
@@ -357,8 +359,8 @@ export default function PostSlide({ post }: { post: DitsPost }) {
                         type="button"
                         onClick={handleShare}
                         className={`${styles.actionButton} ${copied ? styles.actionButtonCopied : ''}`}
-                        aria-label={copied ? 'Link copied' : 'Share post'}
-                        title={copied ? 'Copied!' : 'Share or copy link'}
+                        aria-label={copied ? t('postSlide.linkCopied') : t('common.sharePost')}
+                        title={copied ? t('postSlide.copiedTitle') : t('postSlide.shareOrCopyTitle')}
                     >
                         <span className={styles.actionIconCircle}>
                         {copied ? <Check size={22} color="#10b981" /> : <Share2 size={22} />}

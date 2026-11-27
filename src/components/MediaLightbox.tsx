@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import VideoPlayer from './VideoPlayer';
 import styles from './PostSlide.module.css';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface MediaLightboxProps {
   imageUrl?: string;
@@ -18,6 +19,7 @@ export default function MediaLightbox({
   video,
   onClose,
 }: MediaLightboxProps) {
+  const { t } = useI18n();
   // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,7 +39,7 @@ export default function MediaLightbox({
       <button
         type="button"
         onClick={onClose}
-        aria-label="Close fullscreen"
+        aria-label={t('lightbox.closeFullscreen')}
         className={styles.lightboxClose}
       >
         <X size={22} />
@@ -50,7 +52,7 @@ export default function MediaLightbox({
         {imageUrl && (
           <img
             src={imageUrl}
-            alt={altText || 'Fullscreen media'}
+            alt={altText || t('lightbox.fullscreenMediaAlt')}
             className={styles.lightboxImage}
           />
         )}

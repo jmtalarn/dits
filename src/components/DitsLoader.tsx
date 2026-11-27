@@ -1,10 +1,12 @@
 'use client';
 
 import styles from './DitsLoader.module.css';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 export function DitsFullLoader() {
+  const { t } = useI18n();
   return (
-    <div className={styles.container} role="status" aria-label="Loading Dits">
+    <div className={styles.container} role="status" aria-label={t('loader.loadingDits')}>
       <div className={styles.skeletonCard}>
         <div className={styles.orbWrapper}>
           <span className={styles.pulseRing} />
@@ -25,5 +27,6 @@ export function DitsFullLoader() {
 }
 
 export function DitsMiniSpinner() {
-  return <div className={styles.miniSpinner} aria-label="Loading more" />;
+  const { t } = useI18n();
+  return <div className={styles.miniSpinner} aria-label={t('loader.loadingMore')} />;
 }

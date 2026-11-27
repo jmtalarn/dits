@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { AtpSessionData } from '@atproto/api';
 import { loginWithAppPassword } from '@/lib/bsky';
 import styles from './LoginModal.module.css';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface LoginModalProps {
   onSuccess: (session: AtpSessionData) => void;
@@ -12,6 +13,7 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ onSuccess, onClose }: LoginModalProps) {
+  const { t } = useI18n();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,7 +28,7 @@ export default function LoginModal({ onSuccess, onClose }: LoginModalProps) {
       const session = await loginWithAppPassword(identifier, password);
       onSuccess(session);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : t('login.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -35,20 +37,20 @@ export default function LoginModal({ onSuccess, onClose }: LoginModalProps) {
   return (
     <div className={styles.backdrop} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <button type="button" onClick={onClose} className={styles.closeBtn} aria-label="Close">
+        <button type="button" onClick={onClose} className={styles.closeBtn} aria-label={t('common.close')}>
           <X size={20} />
         </button>
 
-        <h2 className={styles.title}>Sign in to Dits</h2>
+        <h2 className={styles.title}>{t('login.title')}</h2>
         <p className={styles.subtitle}>
-          Use your Bluesky handle and an{' '}
+          {t('login.subtitlePrefix')}{' '}
           <a
             href="https://bsky.app"
             target="_blank"
             rel="noreferrer"
             className={styles.link}
           >
-            App Password
+            {t('login.appPasswordLink')}
           </a>
           .
         </p>
@@ -56,7 +58,7 @@ export default function LoginModal({ onSuccess, onClose }: LoginModalProps) {
         <form onSubmit={handleSubmit} className={styles.form}>
           <input
             type="text"
-            placeholder="Handle (e.g. you.bsky.social)"
+            placeholder={t('login.handlePlaceholder')}
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
             required
@@ -64,7 +66,7 @@ export default function LoginModal({ onSuccess, onClose }: LoginModalProps) {
           />
           <input
             type="password"
-            placeholder="App Password (xxxx-xxxx-xxxx-xxxx)"
+            placeholder={t('login.passwordPlaceholder')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -74,7 +76,7 @@ export default function LoginModal({ onSuccess, onClose }: LoginModalProps) {
           {error && <p className={styles.error}>{error}</p>}
 
           <button type="submit" disabled={loading} className={styles.submitBtn}>
-            {loading ? 'Signing in...' : 'Continue'}
+            {loading ? t('login.signingIn') : t('login.continue')}
           </button>
         </form>
       </div>

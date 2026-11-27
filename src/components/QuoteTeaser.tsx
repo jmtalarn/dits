@@ -2,6 +2,7 @@
 
 import { DitsQuoteData } from '@/lib/bsky';
 import styles from './PostSlide.module.css';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface QuoteTeaserProps {
   quote: DitsQuoteData;
@@ -9,6 +10,7 @@ interface QuoteTeaserProps {
 }
 
 export default function QuoteTeaser({ quote, onSelect }: QuoteTeaserProps) {
+  const { t } = useI18n();
   return (
     <button type="button" onClick={onSelect} className={styles.quoteTeaserBox}>
       <div className={styles.quoteTeaserHeader}>
@@ -20,9 +22,9 @@ export default function QuoteTeaser({ quote, onSelect }: QuoteTeaserProps) {
           />
         )}
         <span className={styles.quoteTeaserAuthor}>
-          {quote.isReplyContext ? `Replying to @${quote.authorHandle}` : `@${quote.authorHandle}`}
+          {quote.isReplyContext ? t('quote.replyingTo', { handle: quote.authorHandle }) : `@${quote.authorHandle}`}
         </span>
-        <span className={styles.quoteTeaserAction}>Llisca →</span>
+        <span className={styles.quoteTeaserAction}>{t('quote.swipe')}</span>
       </div>
       <p className={styles.quoteTeaserText}>{quote.text}</p>
     </button>

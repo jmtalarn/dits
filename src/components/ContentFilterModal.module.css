@@ -112,6 +112,12 @@
   color: #a1a1aa;
 }
 
+.languageOptions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .mutedSection {
   display: flex;
   flex-direction: column;

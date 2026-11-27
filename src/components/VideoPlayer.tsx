@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { Maximize2 } from 'lucide-react';
 import styles from './PostSlide.module.css';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface VideoPlayerProps {
   playlist: string;
@@ -16,6 +17,7 @@ export default function VideoPlayer({
   poster,
   onFullscreen,
 }: VideoPlayerProps) {
+  const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isMuted, setIsMuted] = useState(true);
   const pointerStartX = useRef(0);
@@ -80,13 +82,13 @@ export default function VideoPlayer({
       />
 
       <span className={styles.muteBadge}>
-        {isMuted ? '🔇 Tap for sound' : '🔊 Sound on'}
+        {isMuted ? t('videoPlayer.tapForSound') : t('videoPlayer.soundOn')}
       </span>
 
       {onFullscreen && (
         <button
           type="button"
-          aria-label="Fullscreen video"
+          aria-label={t('videoPlayer.fullscreenVideo')}
           className={styles.fullscreenVideoBtn}
           onClick={(e) => {
             e.stopPropagation(); // Prevents toggling mute when opening fullscreen

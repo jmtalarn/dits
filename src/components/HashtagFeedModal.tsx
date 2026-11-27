@@ -6,6 +6,7 @@ import { getHashtagFeed, getSavedSession, DitsPost } from '@/lib/bsky';
 import PostSlide from './PostSlide';
 import { DitsFullLoader } from './DitsLoader';
 import styles from './HashtagFeedModal.module.css';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface HashtagFeedModalProps {
   tag: string;
@@ -13,6 +14,7 @@ interface HashtagFeedModalProps {
 }
 
 export default function HashtagFeedModal({ tag, onClose }: HashtagFeedModalProps) {
+  const { t } = useI18n();
   const [posts, setPosts] = useState<DitsPost[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +29,7 @@ export default function HashtagFeedModal({ tag, onClose }: HashtagFeedModalProps
     <div className={styles.overlay} role="dialog" aria-modal="true">
       <header className={styles.header}>
         <span className={styles.tagPill}>#{tag.replace(/^#/, '')}</span>
-        <button type="button" onClick={onClose} className={styles.closeBtn} aria-label="Close tag feed">
+        <button type="button" onClick={onClose} className={styles.closeBtn} aria-label={t('hashtagFeed.closeTagFeed')}>
           <X size={18} />
         </button>
       </header>
@@ -35,7 +37,7 @@ export default function HashtagFeedModal({ tag, onClose }: HashtagFeedModalProps
       {loading ? (
         <DitsFullLoader />
       ) : posts.length === 0 ? (
-        <div className={styles.emptyState}>No posts found for #{tag}</div>
+        <div className={styles.emptyState}>{t('hashtagFeed.noPosts', { tag })}</div>
       ) : (
         <div className={styles.feedScroll}>
           {posts.map((post) => (

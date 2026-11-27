@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { X, Check, Compass } from 'lucide-react';
 import { AtpSessionData } from '@atproto/api';
-import { getAvailableFeeds, DitsFeedGenerator } from '@/lib/bsky';
+import { getAvailableFeeds, DEFAULT_DISCOVER_FEED, DitsFeedGenerator } from '@/lib/bsky';
 import { DitsMiniSpinner } from './DitsLoader';
 import styles from './FeedPickerModal.module.css';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface FeedPickerModalProps {
   session: AtpSessionData;
@@ -20,6 +21,7 @@ export default function FeedPickerModal({
   onSelectFeed,
   onClose,
 }: FeedPickerModalProps) {
+  const { t } = useI18n();
   const [savedFeeds, setSavedFeeds] = useState<DitsFeedGenerator[]>([]);
   const [popularFeeds, setPopularFeeds] = useState<DitsFeedGenerator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,9 +52,11 @@ export default function FeedPickerModal({
           </div>
         )}
         <div className={styles.feedMeta}>
-          <span className={styles.feedName}>{feed.displayName}</span>
+          <span className={styles.feedName}>
+            {feed.uri === DEFAULT_DISCOVER_FEED.uri ? t('feed.discoverFeedName') : feed.displayName}
+          </span>
           <span className={styles.feedDesc}>
-            {feed.description || `by @${feed.creatorHandle}`}
+            {feed.description || t('feedPicker.byCreator', { handle: feed.creatorHandle })}
           </span>
         </div>
         {isActive && <Check size={18} color="#38bdf8" />}
@@ -64,8 +68,8 @@ export default function FeedPickerModal({
     <div className={styles.backdrop} onClick={onClose}>
       <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <span className={styles.title}>Choose a Feed</span>
-          <button type="button" onClick={onClose} className={styles.closeBtn} aria-label="Close">
+          <span className={styles.title}>{t('feedPicker.title')}</span>
+          <button type="button" onClick={onClose} className={styles.closeBtn} aria-label={t('common.close')}>
             <X size={18} />
           </button>
         </div>
@@ -76,12 +80,12 @@ export default function FeedPickerModal({
           </div>
         ) : (
           <div className={styles.list}>
-            <span className={styles.sectionLabel}>Your Saved Feeds</span>
+            <span className={styles.sectionLabel}>{t('feedPicker.savedFeeds')}</span>
             {savedFeeds.map(renderFeedRow)}
 
             {popularFeeds.length > 0 && (
               <>
-                <span className={styles.sectionLabel}>Popular on Bluesky</span>
+                <span className={styles.sectionLabel}>{t('feedPicker.popularFeeds')}</span>
                 {popularFeeds.map(renderFeedRow)}
               </>
             )}

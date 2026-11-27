@@ -5,6 +5,7 @@ import { X, Send } from 'lucide-react';
 import { getPostComments, postComment, getSavedSession, DitsComment } from '@/lib/bsky';
 import styles from './CommentsDrawer.module.css';
 import RichTextView from './RichTextView';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface CommentsDrawerProps {
     postUri: string;
@@ -19,6 +20,7 @@ export default function CommentsDrawer({
     onClose,
     onCommentAdded,
 }: CommentsDrawerProps) {
+    const { t } = useI18n();
     const [comments, setComments] = useState<DitsComment[]>([]);
     const [loading, setLoading] = useState(true);
     const [replyText, setReplyText] = useState('');
@@ -56,7 +58,7 @@ export default function CommentsDrawer({
             setReplyText('');
             onCommentAdded();
         } catch {
-            alert('Could not send reply');
+            alert(t('comments.sendError'));
         } finally {
             setSending(false);
         }
@@ -68,17 +70,17 @@ export default function CommentsDrawer({
                 <div className={styles.handleBar} />
 
                 <div className={styles.header}>
-                    <span className={styles.title}>Comments ({comments.length})</span>
-                    <button type="button" onClick={onClose} className={styles.closeBtn} aria-label="Close">
+                    <span className={styles.title}>{t('comments.title', { count: comments.length })}</span>
+                    <button type="button" onClick={onClose} className={styles.closeBtn} aria-label={t('common.close')}>
                         <X size={18} />
                     </button>
                 </div>
 
                 <div className={styles.list}>
                     {loading ? (
-                        <p className={styles.emptyText}>Loading replies...</p>
+                        <p className={styles.emptyText}>{t('comments.loading')}</p>
                     ) : comments.length === 0 ? (
-                        <p className={styles.emptyText}>No replies yet. Start the conversation!</p>
+                        <p className={styles.emptyText}>{t('comments.empty')}</p>
                     ) : (
                         comments.map((c) => (
                             <div key={c.uri} className={styles.commentItem}>
@@ -102,7 +104,7 @@ export default function CommentsDrawer({
                     <form onSubmit={handleSend} className={styles.inputBar}>
                         <input
                             type="text"
-                            placeholder="Write a reply..."
+                            placeholder={t('comments.placeholder')}
                             value={replyText}
                             onChange={(e) => setReplyText(e.target.value)}
                             maxLength={300}
@@ -113,7 +115,7 @@ export default function CommentsDrawer({
                         </button>
                     </form>
                 ) : (
-                    <p className={styles.loginHint}>Sign in to reply to this post</p>
+                    <p className={styles.loginHint}>{t('comments.signInToReply')}</p>
                 )}
             </div>
         </div>

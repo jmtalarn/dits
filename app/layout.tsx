@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import "./globals.css";
 
 
@@ -32,9 +33,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ca">
-      <ServiceWorkerRegister />
-      <body suppressHydrationWarning={true}>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning={true}>
+        <I18nProvider>
+          <ServiceWorkerRegister />
+          {children}
+        </I18nProvider>
+      </body>
     </html>
   );
 }

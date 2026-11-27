@@ -13,12 +13,14 @@ import PostSlide from './PostSlide';
 import AuthorProfileModal from './AuthorProfileModal';
 import { DitsMiniSpinner } from './DitsLoader';
 import styles from './SearchModal.module.css';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface SearchModalProps {
   onClose: () => void;
 }
 
 export default function SearchModal({ onClose }: SearchModalProps) {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'posts' | 'people'>('posts');
   const [sort, setSort] = useState<'top' | 'latest'>('top');
@@ -100,7 +102,7 @@ export default function SearchModal({ onClose }: SearchModalProps) {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search Bluesky posts & people..."
+              placeholder={t('search.placeholder')}
               className={styles.input}
             />
             {query && (
@@ -108,14 +110,14 @@ export default function SearchModal({ onClose }: SearchModalProps) {
                 type="button"
                 onClick={() => setQuery('')}
                 className={styles.clearBtn}
-                aria-label="Clear search"
+                aria-label={t('search.clearSearch')}
               >
                 <X size={15} />
               </button>
             )}
           </div>
           <button type="button" onClick={onClose} className={styles.cancelBtn}>
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
 
@@ -127,14 +129,14 @@ export default function SearchModal({ onClose }: SearchModalProps) {
               onClick={() => setActiveTab('posts')}
               className={activeTab === 'posts' ? styles.tabActive : styles.tabBtn}
             >
-              Posts <span className={styles.tabCount}>{posts.length}</span>
+              {t('search.postsTab')} <span className={styles.tabCount}>{posts.length}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('people')}
               className={activeTab === 'people' ? styles.tabActive : styles.tabBtn}
             >
-              People <span className={styles.tabCount}>{actors.length}</span>
+              {t('search.peopleTab')} <span className={styles.tabCount}>{actors.length}</span>
             </button>
           </div>
         )}
@@ -147,14 +149,14 @@ export default function SearchModal({ onClose }: SearchModalProps) {
               onClick={() => setSort('top')}
               className={sort === 'top' ? styles.sortActive : styles.sortBtn}
             >
-              Top
+              {t('search.top')}
             </button>
             <button
               type="button"
               onClick={() => setSort('latest')}
               className={sort === 'latest' ? styles.sortActive : styles.sortBtn}
             >
-              Latest
+              {t('search.latest')}
             </button>
           </div>
         )}
@@ -167,7 +169,7 @@ export default function SearchModal({ onClose }: SearchModalProps) {
             </div>
           ) : !query.trim() ? (
             <div className={styles.emptyState}>
-              Search by keyword, #hashtag, or @handle
+              {t('search.emptyState')}
             </div>
           ) : activeTab === 'posts' ? (
             posts.length > 0 ? (
@@ -203,7 +205,7 @@ export default function SearchModal({ onClose }: SearchModalProps) {
                       )}
                       {!isImage && !isVideo && (
                         <div className={styles.gridTextCard}>
-                          <p>{p.text || firstSlide?.quote?.text || 'Post'}</p>
+                          <p>{p.text || firstSlide?.quote?.text || t('common.post')}</p>
                         </div>
                       )}
                     </button>
@@ -211,7 +213,7 @@ export default function SearchModal({ onClose }: SearchModalProps) {
                 })}
               </div>
             ) : (
-              <div className={styles.emptyState}>No posts found for “{query}”</div>
+              <div className={styles.emptyState}>{t('search.noPostsFound', { query })}</div>
             )
           ) : actors.length > 0 ? (
             <div className={styles.peopleList}>
@@ -243,7 +245,7 @@ export default function SearchModal({ onClose }: SearchModalProps) {
               ))}
             </div>
           ) : (
-            <div className={styles.emptyState}>No people found for “{query}”</div>
+            <div className={styles.emptyState}>{t('search.noPeopleFound', { query })}</div>
           )}
         </div>
       </div>
@@ -256,7 +258,7 @@ export default function SearchModal({ onClose }: SearchModalProps) {
               type="button"
               onClick={() => setSelectedPostIndex(null)}
               className={styles.feedBackBtn}
-              aria-label="Back to search"
+              aria-label={t('search.backToSearch')}
             >
               <ArrowLeft size={18} />
             </button>
@@ -265,7 +267,7 @@ export default function SearchModal({ onClose }: SearchModalProps) {
               type="button"
               onClick={onClose}
               className={styles.feedBackBtn}
-              aria-label="Close search"
+              aria-label={t('search.closeSearch')}
             >
               <X size={18} />
             </button>

@@ -25,6 +25,7 @@ import PostSlide from './PostSlide';
 import AuthorProfileModal from './AuthorProfileModal';
 import { DitsMiniSpinner } from './DitsLoader';
 import styles from './NotificationsModal.module.css';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface NotificationsModalProps {
   session: AtpSessionData;
@@ -37,6 +38,7 @@ export default function NotificationsModal({
   onClose,
   onMarkedSeen,
 }: NotificationsModalProps) {
+  const { t } = useI18n();
   const [items, setItems] = useState<DitsNotification[]>([]);
   const [filter, setFilter] = useState<'all' | 'mentions'>('all');
   const [loading, setLoading] = useState(true);
@@ -124,19 +126,19 @@ export default function NotificationsModal({
   const renderReasonBadge = (reason: string) => {
     switch (reason) {
       case 'like':
-        return { icon: <Heart size={14} className={styles.iconLike} />, label: 'liked your post' };
+        return { icon: <Heart size={14} className={styles.iconLike} />, label: t('notifications.reasonLike') };
       case 'repost':
-        return { icon: <Repeat2 size={14} className={styles.iconRepost} />, label: 'reposted your post' };
+        return { icon: <Repeat2 size={14} className={styles.iconRepost} />, label: t('notifications.reasonRepost') };
       case 'follow':
-        return { icon: <UserPlus size={14} className={styles.iconFollow} />, label: 'followed you' };
+        return { icon: <UserPlus size={14} className={styles.iconFollow} />, label: t('notifications.reasonFollow') };
       case 'reply':
-        return { icon: <MessageCircle size={14} className={styles.iconReply} />, label: 'replied to you' };
+        return { icon: <MessageCircle size={14} className={styles.iconReply} />, label: t('notifications.reasonReply') };
       case 'quote':
-        return { icon: <Quote size={14} className={styles.iconQuote} />, label: 'quoted your post' };
+        return { icon: <Quote size={14} className={styles.iconQuote} />, label: t('notifications.reasonQuote') };
       case 'mention':
-        return { icon: <AtSign size={14} className={styles.iconMention} />, label: 'mentioned you' };
+        return { icon: <AtSign size={14} className={styles.iconMention} />, label: t('notifications.reasonMention') };
       default:
-        return { icon: <Bell size={14} />, label: 'interacted with you' };
+        return { icon: <Bell size={14} />, label: t('notifications.reasonDefault') };
     }
   };
 
@@ -146,7 +148,7 @@ export default function NotificationsModal({
         <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
           <div className={styles.header}>
             <span className={styles.title}>
-              Unread Notifications {items.length > 0 ? `(${items.length})` : ''}
+              {t('notifications.title')} {items.length > 0 ? `(${items.length})` : ''}
             </span>
             <div className={styles.headerActions}>
               {items.length > 0 && (
@@ -154,13 +156,13 @@ export default function NotificationsModal({
                   type="button"
                   onClick={handleMarkAllRead}
                   className={styles.markReadBtn}
-                  title="Mark all as read"
+                  title={t('notifications.markAllRead')}
                 >
                   <CheckCheck size={15} />
-                  <span>Mark read</span>
+                  <span>{t('notifications.markReadShort')}</span>
                 </button>
               )}
-              <button type="button" onClick={onClose} className={styles.closeBtn} aria-label="Close">
+              <button type="button" onClick={onClose} className={styles.closeBtn} aria-label={t('common.close')}>
                 <X size={18} />
               </button>
             </div>
@@ -172,14 +174,14 @@ export default function NotificationsModal({
               onClick={() => setFilter('all')}
               className={filter === 'all' ? styles.tabActive : styles.tab}
             >
-              All Unread
+              {t('notifications.allUnread')}
             </button>
             <button
               type="button"
               onClick={() => setFilter('mentions')}
               className={filter === 'mentions' ? styles.tabActive : styles.tab}
             >
-              Mentions & Replies
+              {t('notifications.mentionsReplies')}
             </button>
           </div>
 
@@ -189,7 +191,7 @@ export default function NotificationsModal({
                 <DitsMiniSpinner />
               </div>
             ) : filteredItems.length === 0 ? (
-              <div className={styles.centerState}>All caught up — no unread notifications.</div>
+              <div className={styles.centerState}>{t('notifications.allCaughtUp')}</div>
             ) : (
               filteredItems.map((notif) => {
                 const { icon, label } = renderReasonBadge(notif.reason);
@@ -236,10 +238,10 @@ export default function NotificationsModal({
             type="button"
             onClick={() => setSelectedPost(null)}
             className={styles.postViewerBackBtn}
-            aria-label="Back to notifications"
+            aria-label={t('notifications.backToNotifications')}
           >
             <ArrowLeft size={18} />
-            <span>Back to Notifications</span>
+            <span>{t('notifications.backToNotificationsText')}</span>
           </button>
           <div className={styles.postViewerBody}>
             <PostSlide post={selectedPost}  />

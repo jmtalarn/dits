@@ -11,6 +11,7 @@ import AuthorProfileModal from './AuthorProfileModal';
 import HashtagFeedModal from './HashtagFeedModal';
 import styles from './PostSlide.module.css';
 import ExternalLinkCard from './ExternalLinkCard';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface SlideCardProps {
     slide: DitsSlideItem;
@@ -20,6 +21,7 @@ interface SlideCardProps {
 }
 
 export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCardProps) {
+    const { t } = useI18n();
     const [fullscreenMedia, setFullscreenMedia] = useState<{
         imageUrl?: string;
         altText?: string;
@@ -88,10 +90,10 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                         )}
                                         <span className={styles.quoteTeaserAuthor}>
                                             {post.quotePreview.isReplyContext
-                                                ? `Replying to @${post.quotePreview.authorHandle}`
+                                                ? t('quote.replyingTo', { handle: post.quotePreview.authorHandle })
                                                 : post.quotePreview.authorName}
                                         </span>
-                                        <span className={styles.quoteTeaserAction}>Swipe →</span>
+                                        <span className={styles.quoteTeaserAction}>{t('quote.swipe')}</span>
                                     </div>
 
                                     {post.quotePreview.text && (
@@ -108,7 +110,7 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                     {post.quotePreview.image && (
                                         <img
                                             src={post.quotePreview.image}
-                                            alt="Context media"
+                                            alt={t('slideCard.contextMediaAlt')}
                                             className={styles.fullInlineContextImg}
                                             draggable={false}
                                         />
@@ -129,7 +131,7 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                 <>
                                     <img
                                         src={slide.image.fullsize}
-                                        alt={slide.image.alt || 'Image'}
+                                        alt={slide.image.alt || t('common.image')}
                                         className={styles.imageElement}
                                         draggable={false}
                                         loading="lazy"
@@ -138,7 +140,7 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                     />
                                     <button
                                         type="button"
-                                        aria-label="Expand image"
+                                        aria-label={t('slideCard.expandImage')}
                                         className={styles.fullscreenVideoBtn}
                                         onClick={() => setFullscreenMedia({ imageUrl: slide.image!.fullsize, altText: slide.image!.alt })}
                                     >
@@ -157,7 +159,7 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                 slide.gifUrl.split('?').at(0)?.toLowerCase().endsWith('.gif') ? (
                                     <img
                                         src={slide.gifUrl}
-                                        alt={slide.image?.alt || 'GIF'}
+                                        alt={slide.image?.alt || t('common.gif')}
                                         className={styles.imageElement}
                                         draggable={false}
                                     />
@@ -203,12 +205,16 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                             )}
                             <span>
                                 {slide.quote.authorHandle === post.author.handle
-                                    ? `Thread by `
+                                    ? `${t('slideCard.threadBy')} `
                                     : post.quotePreview?.isReplyContext
-                                        ? 'In reply to '
-                                        : 'Quoted by '}
+                                        ? `${t('slideCard.inReplyTo')} `
+                                        : `${t('slideCard.quotedBy')} `}
                                 <strong>@{post.author.handle}</strong>
-                                {index > 0 && slide.quote.authorHandle === post.author.handle ? ` · Part ${index + 1}` : index > 1 ? ` · Part ${index}` : ''}
+                                {index > 0 && slide.quote.authorHandle === post.author.handle
+                                    ? ` · ${t('slideCard.part', { n: index + 1 })}`
+                                    : index > 1
+                                    ? ` · ${t('slideCard.part', { n: index })}`
+                                    : ''}
                             </span>
                         </div>
 
@@ -228,7 +234,7 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                 <div className={`${styles.cardMediaBox} ${!slide.quote.text ? styles.cardMediaBoxFull : ''}`}>
                                     <img
                                         src={slide.quote.image}
-                                        alt="Quoted media"
+                                        alt={t('slideCard.quotedMediaAlt')}
                                         className={styles.imageElement}
                                         draggable={false}
                                         onPointerDown={(e) => (pointerStartX.current = e.clientX)}
@@ -236,7 +242,7 @@ export default function SlideCard({ slide, index, post, onGoToQuote }: SlideCard
                                     />
                                     <button
                                         type="button"
-                                        aria-label="Expand quoted image"
+                                        aria-label={t('slideCard.expandQuotedImage')}
                                         className={styles.fullscreenVideoBtn}
                                         onClick={() => setFullscreenMedia({ imageUrl: slide.quote!.image! })}
                                     >

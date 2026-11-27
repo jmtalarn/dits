@@ -5,6 +5,7 @@ import { X, ImagePlus, Trash2 } from 'lucide-react';
 import { AtpSessionData } from '@atproto/api';
 import { createDitsPost, DitsPost } from '@/lib/bsky';
 import styles from './ComposerModal.module.css';
+import { useI18n } from '@/lib/i18n/I18nProvider';
 
 interface ComposerModalProps {
   session: AtpSessionData;
@@ -17,6 +18,7 @@ export default function ComposerModal({
   onPostCreated,
   onClose,
 }: ComposerModalProps) {
+  const { t } = useI18n();
   const [text, setText] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -51,7 +53,7 @@ export default function ComposerModal({
       const newPost = await createDitsPost(session, text, files);
       onPostCreated(newPost);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error publishing post');
+      setError(err instanceof Error ? err.message : t('composer.publishError'));
     } finally {
       setPublishing(false);
     }
@@ -63,7 +65,7 @@ export default function ComposerModal({
     <div className={styles.backdrop} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <button type="button" onClick={onClose} className={styles.closeBtn} aria-label="Close">
+          <button type="button" onClick={onClose} className={styles.closeBtn} aria-label={t('common.close')}>
             <X size={18} />
           </button>
           <span className={styles.handleTag}>@{session.handle}</span>
@@ -73,12 +75,12 @@ export default function ComposerModal({
             disabled={(!text.trim() && files.length === 0) || publishing || remainingChars < 0}
             className={styles.publishBtn}
           >
-            {publishing ? 'Posting...' : 'Post'}
+            {publishing ? t('composer.posting') : t('composer.post')}
           </button>
         </div>
 
         <textarea
-          placeholder="What's happening in the sky?"
+          placeholder={t('composer.placeholder')}
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={300}
@@ -91,12 +93,12 @@ export default function ComposerModal({
           <div className={styles.previewGrid}>
             {previews.map((src, idx) => (
               <div key={idx} className={styles.previewItem}>
-                <img src={src} alt="Upload preview" className={styles.previewImg} />
+                <img src={src} alt={t('composer.uploadPreviewAlt')} className={styles.previewImg} />
                 <button
                   type="button"
                   onClick={() => removeImage(idx)}
                   className={styles.removeImgBtn}
-                  aria-label="Remove image"
+                  aria-label={t('composer.removeImage')}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -123,7 +125,7 @@ export default function ComposerModal({
             className={styles.mediaBtn}
           >
             <ImagePlus size={18} />
-            <span>Add photos ({files.length}/4)</span>
+            <span>{t('composer.addPhotos', { count: files.length, max: 4 })}</span>
           </button>
 
           <span

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Plus, User, LogOut, Shield, Search, Bell } from 'lucide-react';
+import { Plus, User, LogOut, Shield, Search, Bell, Globe } from 'lucide-react';
 import { AtpSessionData } from '@atproto/api';
 import {
     getVisualFeed,
@@ -26,6 +26,9 @@ import { resetSeenThreads } from '@/lib/bsky';
 import ContentFilterModal from './ContentFilterModal';
 import NotificationsModal from './NotificationsModal';
 import SearchModal from './SearchModal';
+import { useI18n } from '@/lib/i18n/I18nProvider';
+import LanguageModal from './LanguageModal';
+import { SUPPORTED_LANGUAGES } from '@/lib/i18n';
 
 const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || 'dev';
 const FEED_CACHE_KEY = `dits_feed_cache_${BUILD_ID}`;
@@ -39,6 +42,7 @@ interface CachedFeedState {
 }
 
 export default function ClientFeed() {
+    const { t, localeSetting } = useI18n();
     const [session, setSession] = useState<AtpSessionData | null>(null);
     const [sessionChecked, setSessionChecked] = useState(false);
     const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);
@@ -64,6 +68,7 @@ export default function ClientFeed() {
     const [showNotifications, setShowNotifications] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const [showSearch, setShowSearch] = useState(false);
+    const [showLanguageModal, setShowLanguageModal] = useState(false);
 
     // Restore saved session & fetch user avatar
     useEffect(() => {
@@ -168,7 +173,7 @@ export default function ClientFeed() {
                 }
             } catch (err) {
                 if (!cancelled) {
-                    setError(err instanceof Error ? err.message : 'Error loading feed');
+                    setError(err instanceof Error ? err.message : t('feed.loadError'));
                 }
             } finally {
                 if (!cancelled) {
@@ -305,7 +310,7 @@ export default function ClientFeed() {
                             type="button"
                             onClick={() => setShowMenu((prev) => !prev)}
                             className={styles.avatarBtn}
-                            aria-label="Account menu"
+                            aria-label={t('feed.accountMenu')}
                         >
                             {myAvatar ? (
                                 <img src={myAvatar} alt={session.handle} className={styles.navAvatarImg} />
@@ -326,7 +331,25 @@ export default function ClientFeed() {
                                     className={styles.dropdownItem}
                                 >
                                     <User size={15} />
-                                    <span>My Profile</span>
+                                    <span>{t('feed.myProfile')}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowMenu(false);
+                                        setShowLanguageModal(true);
+                                    }}
+                                    className={styles.dropdownItem}
+                                >
+                                    <Globe size={16} />
+                                    <span>
+                                        {t('language.title')}:{' '}
+                                        <strong>
+                                            {localeSetting === 'auto'
+                                                ? t('language.auto')
+                                                : SUPPORTED_LANGUAGES.find((l) => l.code === localeSetting)?.nativeName}
+                                        </strong>
+                                    </span>
                                 </button>
                                 <button
                                     type="button"
@@ -337,7 +360,7 @@ export default function ClientFeed() {
                                     className={styles.dropdownItem}
                                 >
                                     <Shield size={15} />
-                                    <span>Content Filters</span>
+                                    <span>{t('feed.contentFilters')}</span>
                                 </button>
                                 <button
                                     type="button"
@@ -345,7 +368,7 @@ export default function ClientFeed() {
                                     className={styles.dropdownItemDanger}
                                 >
                                     <LogOut size={15} />
-                                    <span>Sign Out</span>
+                                    <span>{t('feed.signOut')}</span>
                                 </button>
                             </div>
                         )}
@@ -368,7 +391,7 @@ export default function ClientFeed() {
                             }}
                             className={`${styles.tabBtn} ${activeTab === 'following' ? styles.tabBtnActive : ''}`}
                         >
-                            Following
+                            {t('feed.followingTab')}
                         </button>
                         <button
                             type="button"
@@ -381,18 +404,18 @@ export default function ClientFeed() {
                             }}
                             className={`${styles.tabBtn} ${activeTab === 'custom' ? styles.tabBtnActive : ''}`}
                         >
-                            {selectedFeed.displayName} ▾
+                            {selectedFeed.uri === DEFAULT_DISCOVER_FEED.uri ? t('feed.discoverFeedName') : selectedFeed.displayName} ▾
                         </button>
                     </div>
                 ) : (
-                    <span className={styles.brandPill}>Explore</span>
+                    <span className={styles.brandPill}>{t('feed.explore')}</span>
                 )}
 
                 {/* Right Slot: + Compose Button (or Sign In) */}
                 <button
                     type="button"
                     onClick={() => setShowSearch(true)}
-                    aria-label="Search"
+                    aria-label={t('common.search')}
                     className={styles.composeBtn}
                 >
                     <Search size={18} />
@@ -401,7 +424,7 @@ export default function ClientFeed() {
                     <button
                         type="button"
                         onClick={() => setShowNotifications(true)}
-                        aria-label="Notifications"
+                        aria-label={t('feed.notifications')}
                         style={{ position: 'relative' }}
                         className={styles.composeBtn}
                     >
@@ -434,14 +457,14 @@ export default function ClientFeed() {
                     <button
                         type="button"
                         onClick={() => setShowComposer(true)}
-                        aria-label="New post"
+                        aria-label={t('feed.newPost')}
                         className={styles.composeBtn}
                     >
                         <Plus size={20} strokeWidth={2.5} />
                     </button>
                 ) : (
                     <button type="button" onClick={() => setShowLogin(true)} className={styles.authBtn}>
-                        Sign in
+                        {t('common.signIn')}
                     </button>
                 )}
 
@@ -530,6 +553,9 @@ export default function ClientFeed() {
                 />
             )}
             {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
+            {showLanguageModal && (
+                <LanguageModal onClose={() => setShowLanguageModal(false)} />
+            )}
         </>
     );
 }
